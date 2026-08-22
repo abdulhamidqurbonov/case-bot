@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Case Opening</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A12;
+    --surface: #15151F;
+    --surface-2: #1C1C2A;
+    --accent: #FF6B35;
+    --accent-2: #FFD23F;
+    --text: #F2F0F8;
+    --muted: #6E6E85;
+    --border: #26263A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+  }
+  h1, h2, .display {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+  }
+
+  .header {
+    padding: 20px 20px 8px;
+    text-align: center;
+  }
+  .header h1 { font-size: 22px; letter-spacing: -0.02em; }
+  .header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .balance-bar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+  }
+  .pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* --- Reel: signature element --- */
+  .reel-wrap {
+    position: relative;
+    margin: 24px 16px 8px;
+    height: 140px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .reel-wrap::before, .reel-wrap::after {
+    content: '';
+    position: absolute; top: 0; bottom: 0;
+    width: 60px; z-index: 3; pointer-events: none;
+  }
+  .reel-wrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+  .reel-wrap::after { right: 0; background: linear-gradient(-90deg, var(--surface), transparent); }
+  .reel-pointer {
+    position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 3px; background: var(--accent);
+    transform: translateX(-50%);
+    z-index: 4;
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .reel {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    gap: 12px;
+    padding: 0 200px;
+    will-change: transform;
+  }
+  .reel-item {
+    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+  .reel-item.rare { border-color: var(--accent-2); box-shadow: 0 0 16px rgba(255,210,63,0.25); }
+
+  .open-btn-wrap { padding: 20px 20px 8px; }
+  .open-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    border: none;
+    background: var(--accent);
+    color: #0A0A12;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+  }
+  .open-btn:disabled {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .open-btn.premium { background: var(--accent-2); }
+  .cooldown-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+  .result-card {
+    margin: 20px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--accent-2);
+    border-radius: 20px;
+    text-align: center;
+    display: none;
+  }
+  .result-card .emoji { font-size: 56px; }
+  .result-card .name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 18px; margin-top: 8px; }
+  .result-card .value { color: var(--accent-2); font-size: 13px; margin-top: 4px; }
+
+  .shop {
+    margin: 24px 16px;
+    padding: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+  .shop h2 { font-size: 15px; margin-bottom: 12px; }
+  .pkg-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+  .pkg-row:first-of-type { border-top: none; }
+  .pkg-name { font-weight: 600; font-size: 14px; }
+  .pkg-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .pkg-buy {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--accent-2);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 100px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; left: 20px; right: 20px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 13px;
+    text-align: center;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🎁 Case Opening</h1>
+    <div class="sub">Qutini oching, sovg'a yutib oling</div>
+  </div>
+
+  <div class="balance-bar">
+    <div class="pill">🆓 <span id="freeCount">–</span> bepul</div>
+    <div class="pill">💎 <span id="premiumCount">–</span> premium</div>
+  </div>
+
+  <div class="reel-wrap">
+    <div class="reel-pointer"></div>
+    <div class="reel" id="reel"></div>
+  </div>
+
+  <div class="open-btn-wrap">
+    <button class="open-btn" id="openFreeBtn">Bepul Case Ochish</button>
+    <div class="cooldown-note" id="cooldownNote"></div>
+  </div>
+  <div class="open-btn-wrap" style="padding-top:0">
+    <button class="open-btn premium" id="openPremiumBtn">💎 Premium Case Ochish</button>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <div class="emoji" id="resultEmoji">🎁</div>
+    <div class="name" id="resultName">—</div>
+    <div class="value" id="resultValue">—</div>
+  </div>
+
+  <div class="shop">
+    <h2>⭐ Stars orqali Premium Case sotib olish</h2>
+    <div class="pkg-row">
+      <div><div class="pkg-name">3 ta Premium Case</div><div class="pkg-sub">50 ⭐</div></div>
+      <button class="pkg-buy" data-pkg="small">Sotib olish</button>
+    </div>
+    <div class="pkg-row">
+      <div><div class="pkg-name">10 ta Premium Case</div><div class="pkg-sub">150 ⭐</div></div>
+      <button class="pkg-buy" data-pkg="medium">Sotib olish</button>
+    </div>
+    <div class="pkg-row">
+      <div><div class="pkg-name">40 ta Premium Case</div><div class="pkg-sub">500 ⭐</div></div>
+      <button class="pkg-buy" data-pkg="large">Sotib olish</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  tg?.ready();
+  tg?.expand();
+
+  const initData = tg?.initData || '';
+  const EMOJI_POOL = ['🎈','🧸','💐','🎁','💎','👑','🚀'];
+
+  const freeCountEl = document.getElementById('freeCount');
+  const premiumCountEl = document.getElementById('premiumCount');
+  const openFreeBtn = document.getElementById('openFreeBtn');
+  const openPremiumBtn = document.getElementById('openPremiumBtn');
+  const cooldownNote = document.getElementById('cooldownNote');
+  const reel = document.getElementById('reel');
+  const resultCard = document.getElementById('resultCard');
+  const toastEl = document.getElementById('toast');
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.style.display = 'block';
+    setTimeout(() => toastEl.style.display = 'none', 3000);
+  }
+
+  function buildReel(finalEmoji) {
+    reel.innerHTML = '';
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateX(0)';
+    const items = 30;
+    const winIndex = 24;
+    for (let i = 0; i < items; i++) {
+      const div = document.createElement('div');
+      div.className = 'reel-item';
+      const emoji = i === winIndex ? finalEmoji : EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+      if (i === winIndex) div.classList.add('rare');
+      div.textContent = emoji;
+      reel.appendChild(div);
+    }
+    // itemWidth (96) + gap (12) = 108
+    const itemWidth = 108;
+    const containerCenter = reel.parentElement.offsetWidth / 2;
+    const offset = (winIndex * itemWidth) + 48 - containerCenter + 200;
+    requestAnimationFrame(() => {
+      reel.style.transition = 'transform 3.2s cubic-bezier(0.12, 0.75, 0.15, 1)';
+      reel.style.transform = `translateX(-${offset}px)`;
+    });
+  }
+
+  async function refreshState() {
+    const res = await fetch('/api/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData })
+    });
+    if (!res.ok) { showToast('Xatolik: foydalanuvchi tekshirilmadi'); return; }
+    const data = await res.json();
+    freeCountEl.textContent = data.freeCasesLeft;
+    premiumCountEl.textContent = data.premiumCases;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (data.freeCasesLeft > 0) {
+      openFreeBtn.disabled = false;
+      cooldownNote.textContent = '';
+    } else {
+      const wait = data.canOpenFreeAt - now;
+      if (wait > 0) {
+        openFreeBtn.disabled = true;
+        const h = Math.floor(wait / 3600), m = Math.floor((wait % 3600) / 60);
+        cooldownNote.textContent = `Keyingi bepul case: ${h}s ${m}d`;
+      } else {
+        openFreeBtn.disabled = false;
+      }
+    }
+    openPremiumBtn.disabled = data.premiumCases < 1;
+  }
+
+  async function openCase(usePremium) {
+    openFreeBtn.disabled = true;
+    openPremiumBtn.disabled = true;
+    resultCard.style.display = 'none';
+
+    const res = await fetch('/api/open-case', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, usePremium })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error === 'free_case_on_cooldown' ? 'Bepul case hali tayyor emas' : 'Premium case yo\'q, do\'kondan sotib oling');
+      await refreshState();
+      return;
+    }
+
+    const emoji = data.prize.name.split(' ')[0];
+    buildReel(emoji);
+    tg?.HapticFeedback?.impactOccurred('medium');
+
+    setTimeout(() => {
+      document.getElementById('resultEmoji').textContent = emoji;
+      document.getElementById('resultName').textContent = data.prize.name;
+      document.getElementById('resultValue').textContent = `Qiymat: ${data.prize.value} ball`;
+      resultCard.style.display = 'block';
+      tg?.HapticFeedback?.notificationOccurred('success');
+      refreshState();
+    }, 3300);
+  }
+
+  openFreeBtn.addEventListener('click', () => openCase(false));
+  openPremiumBtn.addEventListener('click', () => openCase(true));
+
+  document.querySelectorAll('.pkg-buy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pkg = btn.dataset.pkg;
+      const res = await fetch('/api/create-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, package: pkg })
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast('Invoys yaratilmadi'); return; }
+      tg?.openInvoice(data.invoiceLink, (status) => {
+        if (status === 'paid') {
+          showToast('✅ To\'lov qabul qilindi!');
+          refreshState();
+        }
+      });
+    });
+  });
+
+  buildReel(EMOJI_POOL[0]);
+  refreshState();
+</script>
+</body>
+</html>
