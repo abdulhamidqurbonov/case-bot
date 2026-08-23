@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Case Opening</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A12;
+    --surface: #15151F;
+    --surface-2: #1C1C2A;
+    --accent: #FF6B35;
+    --accent-2: #FFD23F;
+    --text: #F2F0F8;
+    --muted: #6E6E85;
+    --border: #26263A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: 84px;
+  }
+  h1, h2, .display { font-family: 'Manrope', sans-serif; font-weight: 800; }
+
+  /* --- Top bar --- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 16px 8px;
+  }
+  .topbar h1 { font-size: 19px; letter-spacing: -0.02em; }
+  .stars-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+    color: var(--accent-2);
+  }
+
+  /* --- Screens --- */
+  .screen { display: none; padding-bottom: 8px; }
+  .screen.active { display: block; }
+
+  /* --- Bottom nav --- */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-btn {
+    flex: 1; background: none; border: none; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 10px 4px 8px; font-size: 11px; font-family: 'Inter', sans-serif;
+    cursor: pointer;
+  }
+  .nav-btn .icon { font-size: 20px; }
+  .nav-btn.active { color: var(--accent); }
+
+  /* --- Home: grid tiles --- */
+  .section-title { padding: 4px 20px 12px; font-size: 15px; color: var(--muted); font-weight: 600; }
+  .home-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 0 16px 20px;
+  }
+  .home-tile {
+    position: relative;
+    aspect-ratio: 1 / 0.85;
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .home-tile .big-emoji { font-size: 40px; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4)); }
+  .home-tile .tile-name { font-weight: 700; font-size: 13px; }
+  .home-tile.t1 { background: radial-gradient(circle at 30% 20%, #3a2a5c, var(--surface-2)); }
+  .home-tile.t2 { background: radial-gradient(circle at 30% 20%, #5c2a2a, var(--surface-2)); }
+  .home-tile.t3 { background: radial-gradient(circle at 30% 20%, #2a5c3f, var(--surface-2)); }
+  .home-tile.t4 { background: radial-gradient(circle at 30% 20%, #2a3f5c, var(--surface-2)); }
+
+  .promo-banner {
+    margin: 12px 16px 20px;
+    padding: 20px;
+    border-radius: 18px;
+    background: linear-gradient(120deg, #3a2a10, var(--surface));
+    border: 1px solid var(--accent-2);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .promo-banner .txt .t { font-weight: 800; font-family: 'Manrope', sans-serif; font-size: 16px; }
+  .promo-banner .txt .s { color: var(--accent-2); font-size: 12px; margin-top: 4px; }
+  .promo-banner .star-icon { font-size: 34px; }
+
+  /* --- Reel (case opening) --- */
+  .reel-wrap {
+    position: relative;
+    margin: 16px 16px 8px;
+    height: 140px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .reel-wrap::before, .reel-wrap::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 3; pointer-events: none;
+  }
+  .reel-wrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
+  .reel-wrap::after { right: 0; background: linear-gradient(-90deg, var(--surface), transparent); }
+  .reel-pointer {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: var(--accent);
+    transform: translateX(-50%); z-index: 4; box-shadow: 0 0 12px var(--accent);
+  }
+  .reel { display: flex; align-items: center; height: 100%; gap: 12px; padding: 0 200px; will-change: transform; }
+  .reel-item {
+    position: relative; flex-shrink: 0; width: 96px; height: 96px;
+    background: radial-gradient(ellipse at 50% 68%, rgba(255,255,255,0.10) 0%, transparent 65%), var(--surface-2);
+    border: 1px solid var(--border); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; font-size: 40px;
+    overflow: hidden;
+    text-shadow: 0 8px 14px rgba(0,0,0,0.55), 0 0 18px rgba(255,255,255,0.12);
+  }
+  .reel-item::after {
+    content: ''; position: absolute; inset: -20%;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.30) 48%, rgba(255,255,255,0.30) 52%, transparent 65%);
+    background-size: 260% 260%; animation: shine-sweep 3.4s ease-in-out infinite;
+    pointer-events: none; mix-blend-mode: screen;
+  }
+  @keyframes shine-sweep { 0% { background-position: 220% 220%; } 60% { background-position: -40% -40%; } 100% { background-position: -40% -40%; } }
+  .reel-item.rare {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 22px rgba(255,210,63,0.4), inset 0 0 24px rgba(255,210,63,0.18);
+    background: radial-gradient(ellipse at 50% 68%, rgba(255,210,63,0.30) 0%, transparent 65%), var(--surface-2);
+  }
+
+  .case-tabs { display: flex; gap: 8px; padding: 4px 16px 4px; }
+  .case-tab {
+    flex: 1; padding: 10px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); font-weight: 700; font-size: 12px; text-align: center;
+    cursor: pointer;
+  }
+  .case-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+  .open-btn-wrap { padding: 16px 16px 4px; }
+  .open-btn {
+    width: 100%; padding: 16px; border-radius: 16px; border: none;
+    background: var(--accent); color: #0A0A12; font-family: 'Manrope', sans-serif;
+    font-weight: 800; font-size: 16px; letter-spacing: -0.01em; cursor: pointer;
+  }
+  .open-btn:disabled { background: var(--surface-2); color: var(--muted); }
+  .open-btn.premium { background: var(--accent-2); }
+  .cooldown-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; padding-bottom: 8px; }
+
+  .result-card {
+    position: relative; margin: 20px; padding: 28px 24px; background: var(--surface);
+    border: 1px solid var(--accent-2); border-radius: 20px; text-align: center; display: none;
+    overflow: hidden; box-shadow: 0 0 40px rgba(255,210,63,0.15);
+  }
+  .result-card .pedestal {
+    position: relative; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 60%, rgba(255,210,63,0.35) 0%, rgba(255,210,63,0.08) 55%, transparent 75%);
+    overflow: hidden;
+  }
+  .result-card .pedestal::after {
+    content: ''; position: absolute; inset: -30%;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.35) 52%, transparent 65%);
+    background-size: 260% 260%; animation: shine-sweep 2.6s ease-in-out infinite; mix-blend-mode: screen;
+  }
+  .result-card .emoji { position: relative; z-index: 1; font-size: 64px; text-shadow: 0 10px 18px rgba(0,0,0,0.6), 0 0 24px rgba(255,210,63,0.35); }
+  .result-card .name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 18px; margin-top: 14px; }
+  .result-card .value { color: var(--accent-2); font-size: 13px; margin-top: 4px; }
+
+  /* --- Shop --- */
+  .shop { margin: 16px 16px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
+  .shop h2 { font-size: 15px; margin-bottom: 12px; }
+  .pkg-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+  .pkg-row:first-of-type { border-top: none; }
+  .pkg-name { font-weight: 600; font-size: 14px; }
+  .pkg-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .pkg-buy { background: var(--surface-2); border: 1px solid var(--border); color: var(--accent-2); font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 100px; }
+
+  /* --- Leaderboard --- */
+  .podium { display: flex; align-items: flex-end; gap: 10px; padding: 20px 16px 8px; justify-content: center; }
+  .podium-col { flex: 1; max-width: 110px; text-align: center; }
+  .podium-avatar {
+    width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 8px;
+    background: var(--surface-2); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;
+  }
+  .podium-col.p1 .podium-avatar { border-color: var(--accent-2); box-shadow: 0 0 16px rgba(255,210,63,0.4); }
+  .podium-name { font-size: 12px; font-weight: 700; }
+  .podium-score { font-size: 11px; color: var(--accent-2); margin-top: 2px; margin-bottom: 8px; }
+  .podium-bar { border-radius: 12px 12px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 20px; }
+  .podium-col.p1 .podium-bar { height: 100px; background: linear-gradient(180deg, #4a3a10, var(--surface-2)); }
+  .podium-col.p2 .podium-bar { height: 74px; background: linear-gradient(180deg, #33333f, var(--surface-2)); }
+  .podium-col.p3 .podium-bar { height: 58px; background: linear-gradient(180deg, #4a2c14, var(--surface-2)); }
+
+  .lb-list { margin: 20px 16px; }
+  .lb-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px;
+  }
+  .lb-rank { width: 22px; text-align: center; font-weight: 800; color: var(--muted); font-size: 13px; }
+  .lb-name { flex: 1; font-weight: 600; font-size: 13px; }
+  .lb-score { color: var(--accent-2); font-weight: 700; font-size: 13px; }
+  .lb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 20px; }
+
+  /* --- Profile --- */
+  .profile-header { display: flex; flex-direction: column; align-items: center; padding: 24px 16px 8px; }
+  .profile-avatar {
+    width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0A0A12;
+  }
+  .profile-name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 17px; margin-top: 12px; }
+  .profile-username { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px 16px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
+  .stat-card .val { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 20px; }
+  .stat-card .lbl { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .toast {
+    position: fixed; bottom: 90px; left: 20px; right: 20px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; font-size: 13px; text-align: center; display: none; z-index: 20;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1 id="pageTitle">🎁 Case Opening</h1>
+    <div class="stars-pill">💎 <span id="premiumCountTop">–</span></div>
+  </div>
+
+  <!-- HOME SCREEN -->
+  <div class="screen active" id="screen-home">
+    <div class="promo-banner">
+      <div class="txt">
+        <div class="t">Kunlik bepul case</div>
+        <div class="s">Har kuni qaytib keling</div>
+      </div>
+      <div class="star-icon">⭐</div>
+    </div>
+    <div class="section-title">O'yinlar</div>
+    <div class="home-grid">
+      <div class="home-tile t1" data-nav="cases"><div class="big-emoji">🎁</div><div class="tile-name">Kейslar</div></div>
+      <div class="home-tile t2" data-nav="shop"><div class="big-emoji">⭐</div><div class="tile-name">Do'kon</div></div>
+      <div class="home-tile t3" data-nav="leaderboard"><div class="big-emoji">🏆</div><div class="tile-name">Reyting</div></div>
+      <div class="home-tile t4" data-nav="profile"><div class="big-emoji">👤</div><div class="tile-name">Profil</div></div>
+    </div>
+  </div>
+
+  <!-- CASES SCREEN -->
+  <div class="screen" id="screen-cases">
+    <div class="case-tabs">
+      <div class="case-tab active" data-case="free">🆓 Bepul</div>
+      <div class="case-tab" data-case="premium">💎 Premium</div>
+    </div>
+
+    <div class="reel-wrap">
+      <div class="reel-pointer"></div>
+      <div class="reel" id="reel"></div>
+    </div>
+
+    <div class="open-btn-wrap">
+      <button class="open-btn" id="openFreeBtn">Bepul Case Ochish</button>
+      <div class="cooldown-note" id="cooldownNoteFree"></div>
+    </div>
+    <div class="open-btn-wrap" id="premiumBtnWrap" style="display:none">
+      <button class="open-btn premium" id="openPremiumBtn">💎 Premium Case Ochish</button>
+      <div class="cooldown-note" id="cooldownNotePremium"></div>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="pedestal"><div class="emoji" id="resultEmoji">🎁</div></div>
+      <div class="name" id="resultName">—</div>
+      <div class="value" id="resultValue">—</div>
+    </div>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div class="screen" id="screen-shop">
+    <div class="shop">
+      <h2>⭐ Stars orqali Premium Case sotib olish</h2>
+      <div class="pkg-row">
+        <div><div class="pkg-name">3 ta Premium Case</div><div class="pkg-sub">50 ⭐</div></div>
+        <button class="pkg-buy" data-pkg="small">Sotib olish</button>
+      </div>
+      <div class="pkg-row">
+        <div><div class="pkg-name">10 ta Premium Case</div><div class="pkg-sub">150 ⭐</div></div>
+        <button class="pkg-buy" data-pkg="medium">Sotib olish</button>
+      </div>
+      <div class="pkg-row">
+        <div><div class="pkg-name">40 ta Premium Case</div><div class="pkg-sub">500 ⭐</div></div>
+        <button class="pkg-buy" data-pkg="large">Sotib olish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD SCREEN -->
+  <div class="screen" id="screen-leaderboard">
+    <div class="podium" id="podium"></div>
+    <div class="lb-list" id="lbList"></div>
+  </div>
+
+  <!-- PROFILE SCREEN -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-header">
+      <div class="profile-avatar" id="profileAvatar">?</div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-username" id="profileUsername">—</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="val" id="statWins">–</div><div class="lbl">G'alabalar</div></div>
+      <div class="stat-card"><div class="val" id="statValue">–</div><div class="lbl">Jami ball</div></div>
+      <div class="stat-card"><div class="val" id="statRefs">–</div><div class="lbl">Referallar</div></div>
+      <div class="stat-card"><div class="val" id="statDays">–</div><div class="lbl">Kun bizdamiz</div></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-nav="home"><span class="icon">🏠</span>Bosh sahifa</button>
+    <button class="nav-btn" data-nav="cases"><span class="icon">🎁</span>Keyslar</button>
+    <button class="nav-btn" data-nav="shop"><span class="icon">🛍</span>Do'kon</button>
+    <button class="nav-btn" data-nav="leaderboard"><span class="icon">🏆</span>Reyting</button>
+    <button class="nav-btn" data-nav="profile"><span class="icon">👤</span>Profil</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  tg?.ready();
+  tg?.expand();
+
+  const initData = tg?.initData || '';
+  const EMOJI_POOL = ['🎈','🧸','💐','🎁','💎','👑','🚀'];
+  const TITLES = { home: '🎁 Case Opening', cases: '🎁 Kейslar', shop: '🛍 Do\'kon', leaderboard: '🏆 Reyting', profile: '👤 Profil' };
+
+  const pageTitle = document.getElementById('pageTitle');
+  const premiumCountTop = document.getElementById('premiumCountTop');
+  const toastEl = document.getElementById('toast');
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.style.display = 'block';
+    setTimeout(() => toastEl.style.display = 'none', 3000);
+  }
+
+  // ---------- Navigation ----------
+  function navigate(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+    pageTitle.textContent = TITLES[name] || '🎁 Case Opening';
+    if (name === 'leaderboard') loadLeaderboard();
+    if (name === 'profile') loadProfile();
+    if (name === 'cases') refreshCaseState();
+  }
+  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => navigate(b.dataset.nav)));
+  document.querySelectorAll('.home-tile').forEach(t => t.addEventListener('click', () => navigate(t.dataset.nav)));
+
+  // ---------- Case tabs ----------
+  let activeCaseType = 'free';
+  document.querySelectorAll('.case-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeCaseType = tab.dataset.case;
+      document.getElementById('openFreeBtn').parentElement.style.display = activeCaseType === 'free' ? 'block' : 'none';
+      document.getElementById('premiumBtnWrap').style.display = activeCaseType === 'premium' ? 'block' : 'none';
+      document.getElementById('resultCard').style.display = 'none';
+    });
+  });
+
+  // ---------- Reel ----------
+  function buildReel(finalEmoji) {
+    const reel = document.getElementById('reel');
+    reel.innerHTML = '';
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateX(0)';
+    const items = 30;
+    const winIndex = 24;
+    for (let i = 0; i < items; i++) {
+      const div = document.createElement('div');
+      div.className = 'reel-item';
+      const emoji = i === winIndex ? finalEmoji : EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+      if (i === winIndex) div.classList.add('rare');
+      div.textContent = emoji;
+      reel.appendChild(div);
+    }
+    const itemWidth = 108;
+    const containerCenter = reel.parentElement.offsetWidth / 2;
+    const offset = (winIndex * itemWidth) + 48 - containerCenter + 200;
+    requestAnimationFrame(() => {
+      reel.style.transition = 'transform 3.2s cubic-bezier(0.12, 0.75, 0.15, 1)';
+      reel.style.transform = `translateX(-${offset}px)`;
+    });
+  }
+
+  // ---------- Case state ----------
+  async function refreshCaseState() {
+    const res = await fetch('/api/me', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!res.ok) { showToast('Xatolik: foydalanuvchi tekshirilmadi'); return; }
+    const data = await res.json();
+    premiumCountTop.textContent = data.premiumCases;
+
+    const now = Math.floor(Date.now() / 1000);
+    const openFreeBtn = document.getElementById('openFreeBtn');
+    const cooldownNoteFree = document.getElementById('cooldownNoteFree');
+    if (data.freeCasesLeft > 0) {
+      openFreeBtn.disabled = false; cooldownNoteFree.textContent = '';
+    } else {
+      const wait = data.canOpenFreeAt - now;
+      if (wait > 0) {
+        openFreeBtn.disabled = true;
+        const h = Math.floor(wait / 3600), m = Math.floor((wait % 3600) / 60);
+        cooldownNoteFree.textContent = `Keyingi bepul case: ${h}s ${m}d`;
+      } else { openFreeBtn.disabled = false; }
+    }
+    document.getElementById('openPremiumBtn').disabled = data.premiumCases < 1;
+    document.getElementById('cooldownNotePremium').textContent = data.premiumCases < 1 ? 'Do\'kondan premium case sotib oling' : '';
+  }
+
+  async function openCase(usePremium) {
+    document.getElementById('openFreeBtn').disabled = true;
+    document.getElementById('openPremiumBtn').disabled = true;
+    document.getElementById('resultCard').style.display = 'none';
+
+    const res = await fetch('/api/open-case', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, usePremium }) });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error === 'free_case_on_cooldown' ? 'Bepul case hali tayyor emas' : 'Premium case yo\'q, do\'kondan sotib oling');
+      await refreshCaseState();
+      return;
+    }
+
+    const emoji = data.prize.name.split(' ')[0];
+    buildReel(emoji);
+    tg?.HapticFeedback?.impactOccurred('medium');
+
+    setTimeout(() => {
+      document.getElementById('resultEmoji').textContent = emoji;
+      document.getElementById('resultName').textContent = data.prize.name;
+      document.getElementById('resultValue').textContent = `Qiymat: ${data.prize.value} ball`;
+      document.getElementById('resultCard').style.display = 'block';
+      tg?.HapticFeedback?.notificationOccurred('success');
+      refreshCaseState();
+    }, 3300);
+  }
+  document.getElementById('openFreeBtn').addEventListener('click', () => openCase(false));
+  document.getElementById('openPremiumBtn').addEventListener('click', () => openCase(true));
+
+  // ---------- Shop ----------
+  document.querySelectorAll('.pkg-buy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pkg = btn.dataset.pkg;
+      const res = await fetch('/api/create-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, package: pkg }) });
+      const data = await res.json();
+      if (!res.ok) { showToast('Invoys yaratilmadi'); return; }
+      tg?.openInvoice(data.invoiceLink, (status) => {
+        if (status === 'paid') { showToast('✅ To\'lov qabul qilindi!'); refreshCaseState(); }
+      });
+    });
+  });
+
+  // ---------- Leaderboard ----------
+  async function loadLeaderboard() {
+    const podium = document.getElementById('podium');
+    const lbList = document.getElementById('lbList');
+    podium.innerHTML = ''; lbList.innerHTML = '<div class="lb-empty">Yuklanmoqda...</div>';
+
+    const res = await fetch('/api/leaderboard');
+    const data = await res.json();
+    const list = data.leaderboard || [];
+
+    if (list.length === 0) {
+      lbList.innerHTML = '<div class="lb-empty">Hali hech kim case ochmagan. Birinchi bo\'ling!</div>';
+      return;
+    }
+
+    const top3 = list.slice(0, 3);
+    const order = [1, 0, 2]; // 2-o'rin, 1-o'rin, 3-o'rin tartibida chizamiz
+    const classNames = { 0: 'p1', 1: 'p2', 2: 'p3' };
+    order.forEach(idx => {
+      const u = top3[idx];
+      if (!u) return;
+      const name = u.username ? '@' + u.username : 'User' + u.telegramId;
+      const initial = name.replace('@', '').charAt(0).toUpperCase();
+      const col = document.createElement('div');
+      col.className = 'podium-col ' + classNames[idx];
+      col.innerHTML = `
+        <div class="podium-avatar">${initial}</div>
+        <div class="podium-name">${name}</div>
+        <div class="podium-score">⭐ ${u.totalValue}</div>
+        <div class="podium-bar">${idx + 1}</div>
+      `;
+      podium.appendChild(col);
+    });
+
+    lbList.innerHTML = '';
+    list.forEach((u, i) => {
+      const name = u.username ? '@' + u.username : 'User' + u.telegramId;
+      const row = document.createElement('div');
+      row.className = 'lb-row';
+      row.innerHTML = `<div class="lb-rank">#${i + 1}</div><div class="lb-name">${name}</div><div class="lb-score">⭐ ${u.totalValue}</div>`;
+      lbList.appendChild(row);
+    });
+  }
+
+  // ---------- Profile ----------
+  async function loadProfile() {
+    const res = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!res.ok) { showToast('Profil yuklanmadi'); return; }
+    const data = await res.json();
+    const displayName = data.firstName || data.username || 'Foydalanuvchi';
+    document.getElementById('profileAvatar').textContent = displayName.charAt(0).toUpperCase();
+    document.getElementById('profileName').textContent = displayName;
+    document.getElementById('profileUsername').textContent = data.username ? '@' + data.username : '';
+    document.getElementById('statWins').textContent = data.wins;
+    document.getElementById('statValue').textContent = data.totalValue;
+    document.getElementById('statRefs').textContent = data.referrals;
+    document.getElementById('statDays').textContent = data.daysWithUs;
+  }
+
+  // ---------- Init ----------
+  buildReel(EMOJI_POOL[0]);
+  refreshCaseState();
+</script>
+</body>
+</html>
