@@ -14,6 +14,7 @@
     --surface-2: #1C1C2A;
     --accent: #FF6B35;
     --accent-2: #FFD23F;
+    --accent-blue: #4C8DFF;
     --text: #F2F0F8;
     --muted: #6E6E85;
     --border: #26263A;
@@ -30,154 +31,88 @@
   h1, h2, .display { font-family: 'Manrope', sans-serif; font-weight: 800; }
 
   /* --- Top bar --- */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 16px 8px;
-  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
   .topbar h1 { font-size: 19px; letter-spacing: -0.02em; }
   .stars-pill {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    padding: 7px 14px;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex; align-items: center; gap: 6px;
-    color: var(--accent-2);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
+    padding: 7px 14px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; color: var(--accent-2);
   }
 
-  /* --- Screens --- */
   .screen { display: none; padding-bottom: 8px; }
   .screen.active { display: block; }
 
   /* --- Bottom nav --- */
   .bottom-nav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex;
-    z-index: 10;
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface);
+    border-top: 1px solid var(--border); display: flex; z-index: 10;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0));
   }
   .nav-btn {
     flex: 1; background: none; border: none; color: var(--muted);
     display: flex; flex-direction: column; align-items: center; gap: 3px;
-    padding: 10px 4px 8px; font-size: 11px; font-family: 'Inter', sans-serif;
-    cursor: pointer;
+    padding: 8px 4px; font-size: 10.5px; font-family: 'Inter', sans-serif;
+    cursor: pointer; border-radius: 12px; transition: background 0.15s;
   }
-  .nav-btn .icon { font-size: 20px; }
-  .nav-btn.active { color: var(--accent); }
+  .nav-btn .icon { font-size: 19px; }
+  .nav-btn.active { color: #fff; background: linear-gradient(135deg, var(--accent-blue), #6a5cf0); font-weight: 700; }
 
-  /* --- Home: grid tiles --- */
+  /* --- Home --- */
   .section-title { padding: 4px 20px 12px; font-size: 15px; color: var(--muted); font-weight: 600; }
-  .home-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-    padding: 0 16px 20px;
-  }
+  .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 20px; }
   .home-tile {
-    position: relative;
-    aspect-ratio: 1 / 0.85;
-    border-radius: 18px;
-    overflow: hidden;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 8px;
-    border: 1px solid var(--border);
-    cursor: pointer;
+    position: relative; aspect-ratio: 1 / 0.85; border-radius: 18px; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid var(--border); cursor: pointer;
   }
   .home-tile .big-emoji { font-size: 40px; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4)); }
   .home-tile .tile-name { font-weight: 700; font-size: 13px; }
   .home-tile.t1 { background: radial-gradient(circle at 30% 20%, #3a2a5c, var(--surface-2)); }
   .home-tile.t2 { background: radial-gradient(circle at 30% 20%, #5c2a2a, var(--surface-2)); }
   .home-tile.t3 { background: radial-gradient(circle at 30% 20%, #2a5c3f, var(--surface-2)); }
-  .home-tile.t4 { background: radial-gradient(circle at 30% 20%, #2a3f5c, var(--surface-2)); }
 
   .promo-banner {
-    margin: 12px 16px 20px;
-    padding: 20px;
-    border-radius: 18px;
-    background: linear-gradient(120deg, #3a2a10, var(--surface));
-    border: 1px solid var(--accent-2);
+    margin: 12px 16px 20px; padding: 20px; border-radius: 18px;
+    background: linear-gradient(120deg, #3a2a10, var(--surface)); border: 1px solid var(--accent-2);
     display: flex; align-items: center; justify-content: space-between;
   }
   .promo-banner .txt .t { font-weight: 800; font-family: 'Manrope', sans-serif; font-size: 16px; }
   .promo-banner .txt .s { color: var(--accent-2); font-size: 12px; margin-top: 4px; }
   .promo-banner .star-icon { font-size: 34px; }
 
-  /* --- Reel (case opening) --- */
-  .reel-wrap {
-    position: relative;
-    margin: 16px 16px 8px;
-    height: 140px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    overflow: hidden;
-  }
-  .reel-wrap::before, .reel-wrap::after {
-    content: ''; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 3; pointer-events: none;
-  }
+  /* --- Reel --- */
+  .reel-wrap { position: relative; margin: 16px 16px 8px; height: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+  .reel-wrap::before, .reel-wrap::after { content: ''; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 3; pointer-events: none; }
   .reel-wrap::before { left: 0; background: linear-gradient(90deg, var(--surface), transparent); }
   .reel-wrap::after { right: 0; background: linear-gradient(-90deg, var(--surface), transparent); }
-  .reel-pointer {
-    position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: var(--accent);
-    transform: translateX(-50%); z-index: 4; box-shadow: 0 0 12px var(--accent);
-  }
+  .reel-pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: var(--accent); transform: translateX(-50%); z-index: 4; box-shadow: 0 0 12px var(--accent); }
   .reel { display: flex; align-items: center; height: 100%; gap: 12px; padding: 0 200px; will-change: transform; }
   .reel-item {
     position: relative; flex-shrink: 0; width: 96px; height: 96px;
     background: radial-gradient(ellipse at 50% 68%, rgba(255,255,255,0.10) 0%, transparent 65%), var(--surface-2);
-    border: 1px solid var(--border); border-radius: 14px;
-    display: flex; align-items: center; justify-content: center; font-size: 40px;
-    overflow: hidden;
-    text-shadow: 0 8px 14px rgba(0,0,0,0.55), 0 0 18px rgba(255,255,255,0.12);
+    border: 1px solid var(--border); border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 40px; overflow: hidden; text-shadow: 0 8px 14px rgba(0,0,0,0.55), 0 0 18px rgba(255,255,255,0.12);
   }
   .reel-item::after {
     content: ''; position: absolute; inset: -20%;
     background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.30) 48%, rgba(255,255,255,0.30) 52%, transparent 65%);
-    background-size: 260% 260%; animation: shine-sweep 3.4s ease-in-out infinite;
-    pointer-events: none; mix-blend-mode: screen;
+    background-size: 260% 260%; animation: shine-sweep 3.4s ease-in-out infinite; pointer-events: none; mix-blend-mode: screen;
   }
   @keyframes shine-sweep { 0% { background-position: 220% 220%; } 60% { background-position: -40% -40%; } 100% { background-position: -40% -40%; } }
-  .reel-item.rare {
-    border-color: var(--accent-2);
-    box-shadow: 0 0 22px rgba(255,210,63,0.4), inset 0 0 24px rgba(255,210,63,0.18);
-    background: radial-gradient(ellipse at 50% 68%, rgba(255,210,63,0.30) 0%, transparent 65%), var(--surface-2);
-  }
+  .reel-item.rare { border-color: var(--accent-2); box-shadow: 0 0 22px rgba(255,210,63,0.4), inset 0 0 24px rgba(255,210,63,0.18); background: radial-gradient(ellipse at 50% 68%, rgba(255,210,63,0.30) 0%, transparent 65%), var(--surface-2); }
 
   .case-tabs { display: flex; gap: 8px; padding: 4px 16px 4px; }
-  .case-tab {
-    flex: 1; padding: 10px; border-radius: 12px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--muted); font-weight: 700; font-size: 12px; text-align: center;
-    cursor: pointer;
-  }
-  .case-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+  .case-tab { flex: 1; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 700; font-size: 12px; text-align: center; cursor: pointer; }
+  .case-tab.active { color: #fff; background: var(--accent-blue); border-color: var(--accent-blue); }
 
   .open-btn-wrap { padding: 16px 16px 4px; }
-  .open-btn {
-    width: 100%; padding: 16px; border-radius: 16px; border: none;
-    background: var(--accent); color: #0A0A12; font-family: 'Manrope', sans-serif;
-    font-weight: 800; font-size: 16px; letter-spacing: -0.01em; cursor: pointer;
-  }
+  .open-btn { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--accent); color: #0A0A12; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.01em; cursor: pointer; }
   .open-btn:disabled { background: var(--surface-2); color: var(--muted); }
   .open-btn.premium { background: var(--accent-2); }
   .cooldown-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; padding-bottom: 8px; }
 
-  .result-card {
-    position: relative; margin: 20px; padding: 28px 24px; background: var(--surface);
-    border: 1px solid var(--accent-2); border-radius: 20px; text-align: center; display: none;
-    overflow: hidden; box-shadow: 0 0 40px rgba(255,210,63,0.15);
-  }
-  .result-card .pedestal {
-    position: relative; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle at 50% 60%, rgba(255,210,63,0.35) 0%, rgba(255,210,63,0.08) 55%, transparent 75%);
-    overflow: hidden;
-  }
-  .result-card .pedestal::after {
-    content: ''; position: absolute; inset: -30%;
-    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.35) 52%, transparent 65%);
-    background-size: 260% 260%; animation: shine-sweep 2.6s ease-in-out infinite; mix-blend-mode: screen;
-  }
+  .result-card { position: relative; margin: 20px; padding: 28px 24px; background: var(--surface); border: 1px solid var(--accent-2); border-radius: 20px; text-align: center; display: none; overflow: hidden; box-shadow: 0 0 40px rgba(255,210,63,0.15); }
+  .result-card .pedestal { position: relative; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 60%, rgba(255,210,63,0.35) 0%, rgba(255,210,63,0.08) 55%, transparent 75%); overflow: hidden; }
+  .result-card .pedestal::after { content: ''; position: absolute; inset: -30%; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.35) 52%, transparent 65%); background-size: 260% 260%; animation: shine-sweep 2.6s ease-in-out infinite; mix-blend-mode: screen; }
   .result-card .emoji { position: relative; z-index: 1; font-size: 64px; text-shadow: 0 10px 18px rgba(0,0,0,0.6), 0 0 24px rgba(255,210,63,0.35); }
   .result-card .name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 18px; margin-top: 14px; }
   .result-card .value { color: var(--accent-2); font-size: 13px; margin-top: 4px; }
@@ -194,11 +129,7 @@
   /* --- Leaderboard --- */
   .podium { display: flex; align-items: flex-end; gap: 10px; padding: 20px 16px 8px; justify-content: center; }
   .podium-col { flex: 1; max-width: 110px; text-align: center; }
-  .podium-avatar {
-    width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 8px;
-    background: var(--surface-2); border: 2px solid var(--border);
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;
-  }
+  .podium-avatar { width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 8px; background: var(--surface-2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
   .podium-col.p1 .podium-avatar { border-color: var(--accent-2); box-shadow: 0 0 16px rgba(255,210,63,0.4); }
   .podium-name { font-size: 12px; font-weight: 700; }
   .podium-score { font-size: 11px; color: var(--accent-2); margin-top: 2px; margin-bottom: 8px; }
@@ -208,34 +139,58 @@
   .podium-col.p3 .podium-bar { height: 58px; background: linear-gradient(180deg, #4a2c14, var(--surface-2)); }
 
   .lb-list { margin: 20px 16px; }
-  .lb-row {
-    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px;
-  }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; }
   .lb-rank { width: 22px; text-align: center; font-weight: 800; color: var(--muted); font-size: 13px; }
   .lb-name { flex: 1; font-weight: 600; font-size: 13px; }
   .lb-score { color: var(--accent-2); font-weight: 700; font-size: 13px; }
-  .lb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 20px; }
+  .empty-note { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 20px; }
 
   /* --- Profile --- */
   .profile-header { display: flex; flex-direction: column; align-items: center; padding: 24px 16px 8px; }
-  .profile-avatar {
-    width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0A0A12;
-  }
+  .profile-avatar { width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #0A0A12; }
   .profile-name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 17px; margin-top: 12px; }
   .profile-username { color: var(--muted); font-size: 13px; margin-top: 2px; }
-
   .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px 16px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
   .stat-card .val { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 20px; }
   .stat-card .lbl { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
-  .toast {
-    position: fixed; bottom: 90px; left: 20px; right: 20px;
-    background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
-    padding: 14px 16px; font-size: 13px; text-align: center; display: none; z-index: 20;
+  /* --- Inventory --- */
+  .inv-list { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .inv-card {
+    position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px 10px 12px; text-align: center; overflow: hidden;
   }
+  .inv-card .pedestal-sm { position: relative; width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 60%, rgba(255,210,63,0.30) 0%, transparent 70%); overflow: hidden; }
+  .inv-card .pedestal-sm::after { content: ''; position: absolute; inset: -30%; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.30) 48%, rgba(255,255,255,0.30) 52%, transparent 65%); background-size: 260% 260%; animation: shine-sweep 3s ease-in-out infinite; mix-blend-mode: screen; }
+  .inv-card .emoji-sm { font-size: 30px; position: relative; z-index: 1; text-shadow: 0 6px 10px rgba(0,0,0,0.5); }
+  .inv-card .inv-name { font-weight: 700; font-size: 12px; }
+  .inv-card .inv-value { color: var(--accent-2); font-size: 11px; margin-top: 3px; }
+  .inv-card .premium-badge { position: absolute; top: 8px; right: 8px; font-size: 11px; }
+
+  /* --- Invite --- */
+  .invite-hero { text-align: center; padding: 30px 20px 10px; }
+  .invite-hero .big { font-size: 48px; }
+  .invite-hero h2 { font-size: 18px; margin-top: 10px; }
+  .invite-hero p { color: var(--muted); font-size: 13px; margin-top: 6px; padding: 0 20px; }
+  .invite-link-box { margin: 20px 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; gap: 10px; }
+  .invite-link-box input { flex: 1; background: none; border: none; color: var(--text); font-size: 12px; outline: none; }
+  .invite-copy-btn { background: var(--accent-blue); border: none; color: #fff; font-weight: 700; font-size: 12px; padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+  .invite-stat { margin: 20px 16px; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; text-align: center; }
+  .invite-stat .val { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 28px; color: var(--accent-2); }
+  .invite-stat .lbl { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  /* --- Tasks --- */
+  .task-card { margin: 12px 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; gap: 12px; }
+  .task-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .task-info { flex: 1; min-width: 0; }
+  .task-title { font-weight: 700; font-size: 13px; }
+  .task-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .task-reward { color: var(--accent-2); font-size: 11px; margin-top: 4px; font-weight: 700; }
+  .task-btn { background: var(--accent-blue); border: none; color: #fff; font-weight: 700; font-size: 12px; padding: 9px 14px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+  .task-btn.done { background: var(--surface-2); color: var(--muted); }
+
+  .toast { position: fixed; bottom: 90px; left: 20px; right: 20px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 13px; text-align: center; display: none; z-index: 20; }
 </style>
 </head>
 <body>
@@ -245,36 +200,27 @@
     <div class="stars-pill">💎 <span id="premiumCountTop">–</span></div>
   </div>
 
-  <!-- HOME SCREEN -->
+  <!-- HOME -->
   <div class="screen active" id="screen-home">
     <div class="promo-banner">
-      <div class="txt">
-        <div class="t">Kunlik bepul case</div>
-        <div class="s">Har kuni qaytib keling</div>
-      </div>
+      <div class="txt"><div class="t">Kunlik bepul case</div><div class="s">Har kuni qaytib keling</div></div>
       <div class="star-icon">⭐</div>
     </div>
     <div class="section-title">O'yinlar</div>
     <div class="home-grid">
       <div class="home-tile t1" data-nav="cases"><div class="big-emoji">🎁</div><div class="tile-name">Kейslar</div></div>
       <div class="home-tile t2" data-nav="shop"><div class="big-emoji">⭐</div><div class="tile-name">Do'kon</div></div>
-      <div class="home-tile t3" data-nav="leaderboard"><div class="big-emoji">🏆</div><div class="tile-name">Reyting</div></div>
-      <div class="home-tile t4" data-nav="profile"><div class="big-emoji">👤</div><div class="tile-name">Profil</div></div>
+      <div class="home-tile t3" data-nav="profile"><div class="big-emoji">👤</div><div class="tile-name">Profil</div></div>
     </div>
   </div>
 
-  <!-- CASES SCREEN -->
+  <!-- CASES -->
   <div class="screen" id="screen-cases">
     <div class="case-tabs">
       <div class="case-tab active" data-case="free">🆓 Bepul</div>
       <div class="case-tab" data-case="premium">💎 Premium</div>
     </div>
-
-    <div class="reel-wrap">
-      <div class="reel-pointer"></div>
-      <div class="reel" id="reel"></div>
-    </div>
-
+    <div class="reel-wrap"><div class="reel-pointer"></div><div class="reel" id="reel"></div></div>
     <div class="open-btn-wrap">
       <button class="open-btn" id="openFreeBtn">Bepul Case Ochish</button>
       <div class="cooldown-note" id="cooldownNoteFree"></div>
@@ -283,7 +229,6 @@
       <button class="open-btn premium" id="openPremiumBtn">💎 Premium Case Ochish</button>
       <div class="cooldown-note" id="cooldownNotePremium"></div>
     </div>
-
     <div class="result-card" id="resultCard">
       <div class="pedestal"><div class="emoji" id="resultEmoji">🎁</div></div>
       <div class="name" id="resultName">—</div>
@@ -291,32 +236,23 @@
     </div>
   </div>
 
-  <!-- SHOP SCREEN -->
+  <!-- SHOP -->
   <div class="screen" id="screen-shop">
     <div class="shop">
       <h2>⭐ Stars orqali Premium Case sotib olish</h2>
-      <div class="pkg-row">
-        <div><div class="pkg-name">3 ta Premium Case</div><div class="pkg-sub">50 ⭐</div></div>
-        <button class="pkg-buy" data-pkg="small">Sotib olish</button>
-      </div>
-      <div class="pkg-row">
-        <div><div class="pkg-name">10 ta Premium Case</div><div class="pkg-sub">150 ⭐</div></div>
-        <button class="pkg-buy" data-pkg="medium">Sotib olish</button>
-      </div>
-      <div class="pkg-row">
-        <div><div class="pkg-name">40 ta Premium Case</div><div class="pkg-sub">500 ⭐</div></div>
-        <button class="pkg-buy" data-pkg="large">Sotib olish</button>
-      </div>
+      <div class="pkg-row"><div><div class="pkg-name">3 ta Premium Case</div><div class="pkg-sub">50 ⭐</div></div><button class="pkg-buy" data-pkg="small">Sotib olish</button></div>
+      <div class="pkg-row"><div><div class="pkg-name">10 ta Premium Case</div><div class="pkg-sub">150 ⭐</div></div><button class="pkg-buy" data-pkg="medium">Sotib olish</button></div>
+      <div class="pkg-row"><div><div class="pkg-name">40 ta Premium Case</div><div class="pkg-sub">500 ⭐</div></div><button class="pkg-buy" data-pkg="large">Sotib olish</button></div>
     </div>
   </div>
 
-  <!-- LEADERBOARD SCREEN -->
+  <!-- LEADERBOARD -->
   <div class="screen" id="screen-leaderboard">
     <div class="podium" id="podium"></div>
     <div class="lb-list" id="lbList"></div>
   </div>
 
-  <!-- PROFILE SCREEN -->
+  <!-- PROFILE -->
   <div class="screen" id="screen-profile">
     <div class="profile-header">
       <div class="profile-avatar" id="profileAvatar">?</div>
@@ -331,12 +267,39 @@
     </div>
   </div>
 
+  <!-- INVENTORY -->
+  <div class="screen" id="screen-inventory">
+    <div class="inv-list" id="invList"></div>
+  </div>
+
+  <!-- INVITE -->
+  <div class="screen" id="screen-invite">
+    <div class="invite-hero">
+      <div class="big">👥</div>
+      <h2>Do'stlaringizni taklif qiling</h2>
+      <p>Har bir taklif qilingan do'stingiz uchun bonus oling</p>
+    </div>
+    <div class="invite-link-box">
+      <input type="text" id="inviteLinkInput" readonly value="Yuklanmoqda..." />
+      <button class="invite-copy-btn" id="copyInviteBtn">Nusxalash</button>
+    </div>
+    <div class="invite-stat">
+      <div class="val" id="inviteCount">–</div>
+      <div class="lbl">Taklif qilingan do'stlar</div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="screen" id="screen-tasks">
+    <div id="tasksList"></div>
+  </div>
+
   <div class="bottom-nav">
+    <button class="nav-btn" data-nav="inventory"><span class="icon">📦</span>Inventar</button>
+    <button class="nav-btn" data-nav="invite"><span class="icon">👥</span>Taklif</button>
     <button class="nav-btn active" data-nav="home"><span class="icon">🏠</span>Bosh sahifa</button>
-    <button class="nav-btn" data-nav="cases"><span class="icon">🎁</span>Keyslar</button>
-    <button class="nav-btn" data-nav="shop"><span class="icon">🛍</span>Do'kon</button>
     <button class="nav-btn" data-nav="leaderboard"><span class="icon">🏆</span>Reyting</button>
-    <button class="nav-btn" data-nav="profile"><span class="icon">👤</span>Profil</button>
+    <button class="nav-btn" data-nav="tasks"><span class="icon">🎯</span>Vazifalar</button>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -348,7 +311,7 @@
 
   const initData = tg?.initData || '';
   const EMOJI_POOL = ['🎈','🧸','💐','🎁','💎','👑','🚀'];
-  const TITLES = { home: '🎁 Case Opening', cases: '🎁 Kейslar', shop: '🛍 Do\'kon', leaderboard: '🏆 Reyting', profile: '👤 Profil' };
+  const TITLES = { home: '🎁 Case Opening', cases: '🎁 Kейslar', shop: '🛍 Do\'kon', leaderboard: '🏆 Reyting', profile: '👤 Profil', inventory: '📦 Inventar', invite: '👥 Taklif qilish', tasks: '🎯 Vazifalar' };
 
   const pageTitle = document.getElementById('pageTitle');
   const premiumCountTop = document.getElementById('premiumCountTop');
@@ -360,7 +323,6 @@
     setTimeout(() => toastEl.style.display = 'none', 3000);
   }
 
-  // ---------- Navigation ----------
   function navigate(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
@@ -369,6 +331,9 @@
     if (name === 'leaderboard') loadLeaderboard();
     if (name === 'profile') loadProfile();
     if (name === 'cases') refreshCaseState();
+    if (name === 'inventory') loadInventory();
+    if (name === 'invite') loadInvite();
+    if (name === 'tasks') loadTasks();
   }
   document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => navigate(b.dataset.nav)));
   document.querySelectorAll('.home-tile').forEach(t => t.addEventListener('click', () => navigate(t.dataset.nav)));
@@ -411,7 +376,6 @@
     });
   }
 
-  // ---------- Case state ----------
   async function refreshCaseState() {
     const res = await fetch('/api/me', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
     if (!res.ok) { showToast('Xatolik: foydalanuvchi tekshirilmadi'); return; }
@@ -481,19 +445,19 @@
   async function loadLeaderboard() {
     const podium = document.getElementById('podium');
     const lbList = document.getElementById('lbList');
-    podium.innerHTML = ''; lbList.innerHTML = '<div class="lb-empty">Yuklanmoqda...</div>';
+    podium.innerHTML = ''; lbList.innerHTML = '<div class="empty-note">Yuklanmoqda...</div>';
 
     const res = await fetch('/api/leaderboard');
     const data = await res.json();
     const list = data.leaderboard || [];
 
     if (list.length === 0) {
-      lbList.innerHTML = '<div class="lb-empty">Hali hech kim case ochmagan. Birinchi bo\'ling!</div>';
+      lbList.innerHTML = '<div class="empty-note">Hali hech kim case ochmagan. Birinchi bo\'ling!</div>';
       return;
     }
 
     const top3 = list.slice(0, 3);
-    const order = [1, 0, 2]; // 2-o'rin, 1-o'rin, 3-o'rin tartibida chizamiz
+    const order = [1, 0, 2];
     const classNames = { 0: 'p1', 1: 'p2', 2: 'p3' };
     order.forEach(idx => {
       const u = top3[idx];
@@ -502,12 +466,7 @@
       const initial = name.replace('@', '').charAt(0).toUpperCase();
       const col = document.createElement('div');
       col.className = 'podium-col ' + classNames[idx];
-      col.innerHTML = `
-        <div class="podium-avatar">${initial}</div>
-        <div class="podium-name">${name}</div>
-        <div class="podium-score">⭐ ${u.totalValue}</div>
-        <div class="podium-bar">${idx + 1}</div>
-      `;
+      col.innerHTML = `<div class="podium-avatar">${initial}</div><div class="podium-name">${name}</div><div class="podium-score">⭐ ${u.totalValue}</div><div class="podium-bar">${idx + 1}</div>`;
       podium.appendChild(col);
     });
 
@@ -534,6 +493,105 @@
     document.getElementById('statValue').textContent = data.totalValue;
     document.getElementById('statRefs').textContent = data.referrals;
     document.getElementById('statDays').textContent = data.daysWithUs;
+  }
+
+  // ---------- Inventory ----------
+  async function loadInventory() {
+    const invList = document.getElementById('invList');
+    invList.innerHTML = '<div class="empty-note">Yuklanmoqda...</div>';
+    const res = await fetch('/api/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!res.ok) { invList.innerHTML = '<div class="empty-note">Yuklab bo\'lmadi</div>'; return; }
+    const data = await res.json();
+    const items = data.items || [];
+    if (items.length === 0) {
+      invList.innerHTML = '<div class="empty-note">Hali sovg\'a yo\'q. Case oching!</div>';
+      return;
+    }
+    invList.innerHTML = '';
+    items.forEach(item => {
+      const emoji = item.name.split(' ')[0];
+      const label = item.name.split(' ').slice(1).join(' ');
+      const card = document.createElement('div');
+      card.className = 'inv-card';
+      card.innerHTML = `
+        ${item.wasPremium ? '<div class="premium-badge">💎</div>' : ''}
+        <div class="pedestal-sm"><div class="emoji-sm">${emoji}</div></div>
+        <div class="inv-name">${label}</div>
+        <div class="inv-value">⭐ ${item.value}</div>
+      `;
+      invList.appendChild(card);
+    });
+  }
+
+  // ---------- Invite ----------
+  async function loadInvite() {
+    const res = await fetch('/api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!res.ok) { showToast('Yuklanmadi'); return; }
+    const data = await res.json();
+    document.getElementById('inviteLinkInput').value = data.link || 'Havola hali tayyor emas';
+    document.getElementById('inviteCount').textContent = data.referralCount;
+  }
+  document.getElementById('copyInviteBtn').addEventListener('click', () => {
+    const input = document.getElementById('inviteLinkInput');
+    input.select();
+    navigator.clipboard?.writeText(input.value).then(() => showToast('✅ Havola nusxalandi!')).catch(() => {
+      document.execCommand('copy');
+      showToast('✅ Havola nusxalandi!');
+    });
+  });
+
+  // ---------- Tasks ----------
+  async function loadTasks() {
+    const tasksList = document.getElementById('tasksList');
+    tasksList.innerHTML = '<div class="empty-note">Yuklanmoqda...</div>';
+    const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!res.ok) { tasksList.innerHTML = '<div class="empty-note">Yuklab bo\'lmadi</div>'; return; }
+    const data = await res.json();
+    const tasks = data.tasks || [];
+    if (tasks.length === 0) {
+      tasksList.innerHTML = '<div class="empty-note">Hozircha vazifalar yo\'q</div>';
+      return;
+    }
+    tasksList.innerHTML = '';
+    tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.innerHTML = `
+        <div class="task-icon">📢</div>
+        <div class="task-info">
+          <div class="task-title">${task.title}</div>
+          <div class="task-sub">${task.subtitle}</div>
+          <div class="task-reward">+${task.reward} 💎 Premium Case</div>
+        </div>
+        <button class="task-btn ${task.completed ? 'done' : ''}" data-task="${task.id}" data-channel="${task.channelUsername || ''}" ${task.completed ? 'disabled' : ''}>
+          ${task.completed ? '✅' : 'Tekshirish'}
+        </button>
+      `;
+      tasksList.appendChild(card);
+    });
+
+    document.querySelectorAll('.task-btn:not(.done)').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const taskId = btn.dataset.task;
+        const channel = btn.dataset.channel;
+        if (channel) tg?.openTelegramLink?.(`https://t.me/${channel.replace('@', '')}`);
+
+        btn.textContent = '...';
+        btn.disabled = true;
+        const res = await fetch('/api/tasks/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, taskId }) });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(`✅ Mukofot olindi: +${data.reward} Premium Case!`);
+          tg?.HapticFeedback?.notificationOccurred('success');
+          loadTasks();
+          refreshCaseState();
+        } else {
+          showToast(data.error === 'not_member' ? 'Avval kanalga obuna bo\'ling' : 'Xatolik yuz berdi');
+          btn.textContent = 'Tekshirish';
+          btn.disabled = false;
+        }
+      });
+    });
   }
 
   // ---------- Init ----------

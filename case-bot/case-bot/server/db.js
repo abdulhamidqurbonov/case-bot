@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS payments (
   telegram_payment_charge_id TEXT,
   created_at INTEGER DEFAULT (strftime('%s','now'))
 );
+
+CREATE TABLE IF NOT EXISTS tasks_completed (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  telegram_id INTEGER,
+  task_key TEXT,
+  completed_at INTEGER DEFAULT (strftime('%s','now')),
+  UNIQUE(telegram_id, task_key)
+);
 `);
 
 function getOrCreateUser(telegramId, username, referredBy) {

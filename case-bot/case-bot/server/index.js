@@ -11,6 +11,9 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = process.env.WEBAPP_URL; // masalan https://sizning-domen.com
 const PORT = process.env.PORT || 3000;
 const FREE_CASE_COOLDOWN_SEC = 24 * 60 * 60; // 24 soat
+const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || null; // masalan @mening_kanalim
+const TASK_REWARD_CASES = parseInt(process.env.TASK_REWARD_CASES || '1', 10);
+let BOT_USERNAME = process.env.BOT_USERNAME || null; // referal havolalar uchun
 
 if (!BOT_TOKEN) {
   console.error('XATOLIK: .env faylida BOT_TOKEN ko\'rsatilmagan');
@@ -22,6 +25,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Bot username'ni avtomatik aniqlash (referal havolalar uchun kerak)
+bot.telegram.getMe().then((me) => {
+  if (!BOT_USERNAME) BOT_USERNAME = me.username;
+  console.log(`Bot username: @${BOT_USERNAME}`);
+}).catch((err) => console.error('getMe xato:', err.message));
 
 // --- Telegram initData ni tekshirish (xavfsizlik uchun MAJBURIY) ---
 function verifyInitData(initData) {
@@ -77,6 +86,78 @@ app.post('/api/open-case', (req, res) => {
     .run(user.id, prize.name, prize.value, usePremium ? 1 : 0);
 
   res.json({ prize });
+});
+
+// --- API: inventar (yutilgan sovg'alar) ---
+app.post('/api/inventory', (req, res) => {
+  const user = verifyInitData(req.body.initData || '');
+  if (!user) return res.status(401).json({ error: 'invalid_init_data' });
+
+  const items = db.prepare(`
+    SELECT prize_name as name, prize_value as value, was_premium as wasPremium, opened_at as openedAt
+    FROM case_openings WHERE telegram_id = ? ORDER BY opened_at DESC LIMIT 100
+  `).all(user.id);
+  res.json({ items });
+});
+
+// --- API: referal havola va statistikasi ---
+app.post('/api/referral', (req, res) => {
+  const user = verifyInitData(req.body.initData || '');
+  if (!user) return res.status(401).json({ error: 'invalid_init_data' });
+
+  getOrCreateUser(user.id, user.username);
+  const referrals = db.prepare('SELECT COUNT(*) as count FROM users WHERE referred_by = ?').get(user.id);
+  const link = BOT_USERNAME ? `https://t.me/${BOT_USERNAME}?start=ref_${user.id}` : null;
+  res.json({ link, referralCount: referrals.count });
+});
+
+// --- API: vazifalar ro'yxati va holati ---
+app.post('/api/tasks', (req, res) => {
+  const user = verifyInitData(req.body.initData || '');
+  if (!user) return res.status(401).json({ error: 'invalid_init_data' });
+
+  const completed = db.prepare('SELECT task_key FROM tasks_completed WHERE telegram_id = ?').all(user.id).map(r => r.task_key);
+  const tasks = [];
+  if (CHANNEL_USERNAME) {
+    tasks.push({
+      id: 'join_channel',
+      title: `Kanalga obuna bo'ling`,
+      subtitle: CHANNEL_USERNAME,
+      reward: TASK_REWARD_CASES,
+      completed: completed.includes('join_channel'),
+      channelUsername: CHANNEL_USERNAME,
+    });
+  }
+  res.json({ tasks });
+});
+
+// --- API: vazifani tekshirish va mukofot berish ---
+app.post('/api/tasks/check', async (req, res) => {
+  const user = verifyInitData(req.body.initData || '');
+  if (!user) return res.status(401).json({ error: 'invalid_init_data' });
+
+  const taskId = req.body.taskId;
+  if (taskId !== 'join_channel' || !CHANNEL_USERNAME) {
+    return res.status(400).json({ error: 'unknown_task' });
+  }
+
+  const already = db.prepare('SELECT 1 FROM tasks_completed WHERE telegram_id = ? AND task_key = ?').get(user.id, 'join_channel');
+  if (already) return res.status(400).json({ error: 'already_completed' });
+
+  try {
+    const member = await bot.telegram.getChatMember(CHANNEL_USERNAME, user.id);
+    const isMember = ['member', 'administrator', 'creator'].includes(member.status);
+    if (!isMember) return res.status(400).json({ error: 'not_member' });
+
+    getOrCreateUser(user.id, user.username);
+    db.prepare('INSERT INTO tasks_completed (telegram_id, task_key) VALUES (?, ?)').run(user.id, 'join_channel');
+    db.prepare('UPDATE users SET premium_cases = premium_cases + ? WHERE telegram_id = ?').run(TASK_REWARD_CASES, user.id);
+
+    res.json({ success: true, reward: TASK_REWARD_CASES });
+  } catch (err) {
+    console.error('Kanal tekshiruvida xato:', err.message);
+    res.status(500).json({ error: 'check_failed' });
+  }
 });
 
 // --- API: reyting (leaderboard) ---
