@@ -8,12 +8,12 @@ const { db, getOrCreateUser } = require('./db');
 const { pickPrize } = require('./prizes');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL; // masalan https://sizning-domen.com
+const WEBAPP_URL = process.env.WEBAPP_URL;
 const PORT = process.env.PORT || 3000;
-const FREE_CASE_COOLDOWN_SEC = 24 * 60 * 60; // 24 soat
-const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || null; // masalan @mening_kanalim
+const FREE_CASE_COOLDOWN_SEC = 24 * 60 * 60;
+const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || null;
 const TASK_REWARD_CASES = parseInt(process.env.TASK_REWARD_CASES || '1', 10);
-let BOT_USERNAME = process.env.BOT_USERNAME || null; // referal havolalar uchun
+let BOT_USERNAME = process.env.BOT_USERNAME || null;
 
 if (!BOT_TOKEN) {
   console.error('XATOLIK: .env faylida BOT_TOKEN ko\'rsatilmagan');
@@ -26,13 +26,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Bot username'ni avtomatik aniqlash (referal havolalar uchun kerak)
 bot.telegram.getMe().then((me) => {
   if (!BOT_USERNAME) BOT_USERNAME = me.username;
   console.log(`Bot username: @${BOT_USERNAME}`);
 }).catch((err) => console.error('getMe xato:', err.message));
 
-// --- Telegram initData ni tekshirish (xavfsizlik uchun MAJBURIY) ---
 function verifyInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
@@ -49,7 +47,7 @@ function verifyInitData(initData) {
   return userJson ? JSON.parse(userJson) : null;
 }
 
-// --- API: foydalanuvchi holatini olish ---
+// --- API: foydalanuvchi holati ---
 app.post('/api/me', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -63,7 +61,7 @@ app.post('/api/me', (req, res) => {
   });
 });
 
-// --- API: case ochish ---
+// --- API: case ochish (caseId qo'llab-quvvatlanadi) ---
 app.post('/api/open-case', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -71,6 +69,7 @@ app.post('/api/open-case', (req, res) => {
   const dbUser = getOrCreateUser(user.id, user.username);
   const now = Math.floor(Date.now() / 1000);
   const usePremium = req.body.usePremium === true;
+  const caseId = req.body.caseId || null;
 
   if (usePremium) {
     if (dbUser.premium_cases < 1) return res.status(400).json({ error: 'no_premium_cases' });
@@ -81,14 +80,14 @@ app.post('/api/open-case', (req, res) => {
     db.prepare('UPDATE users SET free_cases_left = 0, last_free_case_at = ? WHERE telegram_id = ?').run(now, user.id);
   }
 
-  const prize = pickPrize(usePremium);
+  const prize = pickPrize(usePremium, caseId);
   db.prepare('INSERT INTO case_openings (telegram_id, prize_name, prize_value, was_premium) VALUES (?, ?, ?, ?)')
     .run(user.id, prize.name, prize.value, usePremium ? 1 : 0);
 
   res.json({ prize });
 });
 
-// --- API: inventar (yutilgan sovg'alar) ---
+// --- API: inventar ---
 app.post('/api/inventory', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -100,7 +99,7 @@ app.post('/api/inventory', (req, res) => {
   res.json({ items });
 });
 
-// --- API: referal havola va statistikasi ---
+// --- API: referal ---
 app.post('/api/referral', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -111,7 +110,7 @@ app.post('/api/referral', (req, res) => {
   res.json({ link, referralCount: referrals.count });
 });
 
-// --- API: vazifalar ro'yxati va holati ---
+// --- API: vazifalar ---
 app.post('/api/tasks', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -131,7 +130,7 @@ app.post('/api/tasks', (req, res) => {
   res.json({ tasks });
 });
 
-// --- API: vazifani tekshirish va mukofot berish ---
+// --- API: vazifani tekshirish ---
 app.post('/api/tasks/check', async (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -160,7 +159,7 @@ app.post('/api/tasks/check', async (req, res) => {
   }
 });
 
-// --- API: reyting (leaderboard) ---
+// --- API: reyting ---
 app.get('/api/leaderboard', (req, res) => {
   const rows = db.prepare(`
     SELECT u.telegram_id as telegramId, u.username,
@@ -176,7 +175,7 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ leaderboard: rows });
 });
 
-// --- API: profil statistikasi ---
+// --- API: profil ---
 app.post('/api/profile', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -199,11 +198,11 @@ app.post('/api/profile', (req, res) => {
   });
 });
 
-// --- API: Stars invoice yaratish (premium case sotib olish) ---
+// --- API: Stars invoice ---
 const STARS_PACKAGES = {
-  small: { stars: 50, cases: 3, label: '3 ta Premium Case' },
+  small:  { stars: 50,  cases: 3,  label: '3 ta Premium Case'  },
   medium: { stars: 150, cases: 10, label: '10 ta Premium Case' },
-  large: { stars: 500, cases: 40, label: '40 ta Premium Case' },
+  large:  { stars: 500, cases: 40, label: '40 ta Premium Case' },
 };
 
 app.post('/api/create-invoice', async (req, res) => {
@@ -218,7 +217,7 @@ app.post('/api/create-invoice', async (req, res) => {
       title: pkg.label,
       description: `${pkg.cases} ta Premium Case sotib olasiz`,
       payload: JSON.stringify({ telegramId: user.id, package: req.body.package }),
-      provider_token: '', // Stars uchun bo'sh qoldiriladi
+      provider_token: '',
       currency: 'XTR',
       prices: [{ label: pkg.label, amount: pkg.stars }],
     });
@@ -229,7 +228,7 @@ app.post('/api/create-invoice', async (req, res) => {
   }
 });
 
-// --- Bot: to'lovdan oldingi tekshiruv (majburiy javob berish kerak) ---
+// --- Bot: pre_checkout ---
 bot.on('pre_checkout_query', (ctx) => {
   ctx.answerPreCheckoutQuery(true).catch(console.error);
 });
@@ -246,24 +245,24 @@ bot.on('message', (ctx, next) => {
         .run(pkg.cases, payload.telegramId);
       db.prepare('INSERT INTO payments (telegram_id, stars_amount, cases_granted, telegram_payment_charge_id) VALUES (?, ?, ?, ?)')
         .run(payload.telegramId, payment.total_amount, pkg.cases, payment.telegram_payment_charge_id);
-      ctx.reply(`✅ Rahmat! ${pkg.cases} ta Premium Case hisobingizga qo'shildi. Mini App'ni oching va oching!`);
+      ctx.reply(`✅ Rahmat! ${pkg.cases} ta Premium Case hisobingizga qo'shildi!`);
     }
     return;
   }
   return next();
 });
 
-// --- Bot: /start komandasi ---
+// --- Bot: /start ---
 bot.start((ctx) => {
   const refMatch = ctx.message.text.match(/ref_(\d+)/);
   const referredBy = refMatch ? parseInt(refMatch[1]) : null;
   getOrCreateUser(ctx.from.id, ctx.from.username, referredBy);
 
   ctx.reply(
-    '🎁 Xush kelibsiz! Bepul kейsni oching va sovg\'a yutib oling!',
+    '🎁 Xush kelibsiz! Bepul case oching va CS2 qurollari yutib oling!',
     {
       reply_markup: {
-        inline_keyboard: [[{ text: '🎁 Case Ochish', web_app: { url: WEBAPP_URL } }]],
+        inline_keyboard: [[{ text: '🔫 CS2 Case Ochish', web_app: { url: WEBAPP_URL } }]],
       },
     }
   );
@@ -272,5 +271,5 @@ bot.start((ctx) => {
 bot.launch();
 app.listen(PORT, () => console.log(`Server ${PORT}-portda ishlamoqda`));
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
