@@ -5,15 +5,16 @@ const path = require('path');
 const crypto = require('crypto');
 const { Telegraf } = require('telegraf');
 const { db, getOrCreateUser } = require('./db');
-const { pickPrize } = require('./prizes');
+const { getCase, pickPrize, publicCaseList, CATEGORIES } = require('./cases');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL;
+const WEBAPP_URL = process.env.WEBAPP_URL; // masalan https://sizning-domen.com
 const PORT = process.env.PORT || 3000;
-const FREE_CASE_COOLDOWN_SEC = 24 * 60 * 60;
-const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || null;
-const TASK_REWARD_CASES = parseInt(process.env.TASK_REWARD_CASES || '1', 10);
-let BOT_USERNAME = process.env.BOT_USERNAME || null;
+const FREE_CASE_COOLDOWN_SEC = 24 * 60 * 60; // 24 soat
+const CHANNEL_USERNAME = process.env.CHANNEL_USERNAME || null; // masalan @mening_kanalim
+const TASK_REWARD_DIAMONDS = parseInt(process.env.TASK_REWARD_DIAMONDS || '5000', 10);
+const MAX_OPEN_QUANTITY = 5;
+let BOT_USERNAME = process.env.BOT_USERNAME || null; // referal havolalar uchun
 
 if (!BOT_TOKEN) {
   console.error('XATOLIK: .env faylida BOT_TOKEN ko\'rsatilmagan');
@@ -26,11 +27,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Bot username'ni avtomatik aniqlash (referal havolalar uchun kerak)
 bot.telegram.getMe().then((me) => {
   if (!BOT_USERNAME) BOT_USERNAME = me.username;
   console.log(`Bot username: @${BOT_USERNAME}`);
 }).catch((err) => console.error('getMe xato:', err.message));
 
+// --- Telegram initData ni tekshirish (xavfsizlik uchun MAJBURIY) ---
+// Buni olib tashlasangiz, xohlagan odam API'ga to'g'ridan-to'g'ri murojaat qilib
+// balansni firibgarlik bilan oshirib yuborishi mumkin bo'ladi.
 function verifyInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
@@ -47,59 +52,84 @@ function verifyInitData(initData) {
   return userJson ? JSON.parse(userJson) : null;
 }
 
-// --- API: foydalanuvchi holati ---
+// --- API: keyslar katalogi + kategoriyalar (auth talab qilinmaydi, statik ma'lumot) ---
+app.get('/api/cases', (req, res) => {
+  res.json({ cases: publicCaseList(), categories: CATEGORIES });
+});
+
+// --- API: foydalanuvchi holatini olish ---
 app.post('/api/me', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
 
   const dbUser = getOrCreateUser(user.id, user.username);
+  const now = Math.floor(Date.now() / 1000);
+  const canOpenFree = dbUser.free_cases_left > 0 || (now - dbUser.last_free_case_at) >= FREE_CASE_COOLDOWN_SEC;
   res.json({
     telegramId: dbUser.telegram_id,
-    freeCasesLeft: dbUser.free_cases_left,
-    premiumCases: dbUser.premium_cases,
+    diamonds: dbUser.diamonds,
+    canOpenFree,
     canOpenFreeAt: dbUser.last_free_case_at + FREE_CASE_COOLDOWN_SEC,
   });
 });
 
-// --- API: case ochish (caseId qo'llab-quvvatlanadi) ---
+// --- API: keys ochish (quantity >= 1, bepul bo'lmagan keyslarda bir nechtasini bir vaqtda ochish mumkin) ---
 app.post('/api/open-case', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
 
+  const caseObj = getCase(req.body.caseId);
+  if (!caseObj) return res.status(400).json({ error: 'unknown_case' });
+
+  let quantity = parseInt(req.body.quantity, 10) || 1;
+  quantity = Math.max(1, Math.min(MAX_OPEN_QUANTITY, quantity));
+
   const dbUser = getOrCreateUser(user.id, user.username);
   const now = Math.floor(Date.now() / 1000);
-  const usePremium = req.body.usePremium === true;
-  const caseId = req.body.caseId || null;
 
-  if (usePremium) {
-    if (dbUser.premium_cases < 1) return res.status(400).json({ error: 'no_premium_cases' });
-    db.prepare('UPDATE users SET premium_cases = premium_cases - 1 WHERE telegram_id = ?').run(user.id);
-  } else {
+  if (caseObj.price === 0) {
+    // Bepul keys — faqat 1 dona, kunlik limit bilan
+    quantity = 1;
     const canOpen = dbUser.free_cases_left > 0 || (now - dbUser.last_free_case_at) >= FREE_CASE_COOLDOWN_SEC;
     if (!canOpen) return res.status(400).json({ error: 'free_case_on_cooldown' });
     db.prepare('UPDATE users SET free_cases_left = 0, last_free_case_at = ? WHERE telegram_id = ?').run(now, user.id);
+  } else {
+    const totalCost = caseObj.price * quantity;
+    if (dbUser.diamonds < totalCost) {
+      return res.status(400).json({ error: 'not_enough_diamonds', needed: totalCost, have: dbUser.diamonds });
+    }
+    db.prepare('UPDATE users SET diamonds = diamonds - ? WHERE telegram_id = ?').run(totalCost, user.id);
   }
 
-  const prize = pickPrize(usePremium, caseId);
-  db.prepare('INSERT INTO case_openings (telegram_id, prize_name, prize_value, was_premium) VALUES (?, ?, ?, ?)')
-    .run(user.id, prize.name, prize.value, usePremium ? 1 : 0);
+  const insertOpening = db.prepare(`
+    INSERT INTO case_openings (telegram_id, case_id, case_name, prize_name, prize_value, prize_icon, prize_rarity, cost_diamonds)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
 
-  res.json({ prize });
+  const prizes = [];
+  for (let i = 0; i < quantity; i++) {
+    const prize = pickPrize(caseObj);
+    insertOpening.run(user.id, caseObj.id, caseObj.name, prize.name, prize.value, prize.icon, prize.rarity, caseObj.price);
+    prizes.push(prize);
+  }
+
+  const updatedUser = db.prepare('SELECT diamonds FROM users WHERE telegram_id = ?').get(user.id);
+  res.json({ prizes, diamonds: updatedUser.diamonds, caseName: caseObj.name });
 });
 
-// --- API: inventar ---
+// --- API: inventar (yutilgan sovg'alar) ---
 app.post('/api/inventory', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
 
   const items = db.prepare(`
-    SELECT prize_name as name, prize_value as value, was_premium as wasPremium, opened_at as openedAt
+    SELECT prize_name as name, prize_value as value, prize_icon as icon, prize_rarity as rarity, case_name as caseName, opened_at as openedAt
     FROM case_openings WHERE telegram_id = ? ORDER BY opened_at DESC LIMIT 100
   `).all(user.id);
   res.json({ items });
 });
 
-// --- API: referal ---
+// --- API: referal havola va statistikasi ---
 app.post('/api/referral', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -110,19 +140,19 @@ app.post('/api/referral', (req, res) => {
   res.json({ link, referralCount: referrals.count });
 });
 
-// --- API: vazifalar ---
+// --- API: vazifalar ro'yxati va holati ---
 app.post('/api/tasks', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
 
-  const completed = db.prepare('SELECT task_key FROM tasks_completed WHERE telegram_id = ?').all(user.id).map(r => r.task_key);
+  const completed = db.prepare('SELECT task_key FROM tasks_completed WHERE telegram_id = ?').all(user.id).map((r) => r.task_key);
   const tasks = [];
   if (CHANNEL_USERNAME) {
     tasks.push({
       id: 'join_channel',
-      title: `Kanalga obuna bo'ling`,
+      title: "Kanalga obuna bo'ling",
       subtitle: CHANNEL_USERNAME,
-      reward: TASK_REWARD_CASES,
+      reward: TASK_REWARD_DIAMONDS,
       completed: completed.includes('join_channel'),
       channelUsername: CHANNEL_USERNAME,
     });
@@ -130,7 +160,7 @@ app.post('/api/tasks', (req, res) => {
   res.json({ tasks });
 });
 
-// --- API: vazifani tekshirish ---
+// --- API: vazifani tekshirish va mukofot berish ---
 app.post('/api/tasks/check', async (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -150,16 +180,16 @@ app.post('/api/tasks/check', async (req, res) => {
 
     getOrCreateUser(user.id, user.username);
     db.prepare('INSERT INTO tasks_completed (telegram_id, task_key) VALUES (?, ?)').run(user.id, 'join_channel');
-    db.prepare('UPDATE users SET premium_cases = premium_cases + ? WHERE telegram_id = ?').run(TASK_REWARD_CASES, user.id);
+    db.prepare('UPDATE users SET diamonds = diamonds + ? WHERE telegram_id = ?').run(TASK_REWARD_DIAMONDS, user.id);
 
-    res.json({ success: true, reward: TASK_REWARD_CASES });
+    res.json({ success: true, reward: TASK_REWARD_DIAMONDS });
   } catch (err) {
     console.error('Kanal tekshiruvida xato:', err.message);
     res.status(500).json({ error: 'check_failed' });
   }
 });
 
-// --- API: reyting ---
+// --- API: reyting (leaderboard) ---
 app.get('/api/leaderboard', (req, res) => {
   const rows = db.prepare(`
     SELECT u.telegram_id as telegramId, u.username,
@@ -175,7 +205,7 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ leaderboard: rows });
 });
 
-// --- API: profil ---
+// --- API: profil statistikasi ---
 app.post('/api/profile', (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
@@ -193,31 +223,43 @@ app.post('/api/profile', (req, res) => {
     firstName: user.first_name || '',
     wins: stats.wins,
     totalValue: stats.totalValue,
+    diamonds: dbUser.diamonds,
     referrals: referrals.count,
     daysWithUs,
   });
 });
 
-// --- API: Stars invoice ---
-const STARS_PACKAGES = {
-  small:  { stars: 50,  cases: 3,  label: '3 ta Premium Case'  },
-  medium: { stars: 150, cases: 10, label: '10 ta Premium Case' },
-  large:  { stars: 500, cases: 40, label: '40 ta Premium Case' },
+// --- API: Stars orqali diamond sotib olish uchun paketlar ---
+// Diamond — faqat Telegram Stars (XTR) orqali sotib olinadigan virtual valyuta.
+// Real pul to'lov shlyuzlari (karta/kripto/Steam skin) ataylab ulanmagan: Telegram
+// buni rasman qo'llab-quvvatlaydi, cashout mavjud emas, shu bilan platforma
+// litsenziyasiz pulli-qimor emas, oddiy in-app-purchase modeliga mos keladi.
+const DIAMOND_PACKAGES = {
+  starter: { stars: 60, diamonds: 15000, label: "15 000 💎" },
+  plus: { stars: 130, diamonds: 35000, label: "35 000 💎" },
+  popular: { stars: 260, diamonds: 75000, label: "75 000 💎 (+bonus)" },
+  vip: { stars: 480, diamonds: 150000, label: "150 000 💎 (+bonus)" },
+  mega: { stars: 900, diamonds: 300000, label: "300 000 💎 (+bonus)" },
 };
+
+app.get('/api/diamond-packages', (req, res) => {
+  res.json({ packages: DIAMOND_PACKAGES });
+});
 
 app.post('/api/create-invoice', async (req, res) => {
   const user = verifyInitData(req.body.initData || '');
   if (!user) return res.status(401).json({ error: 'invalid_init_data' });
 
-  const pkg = STARS_PACKAGES[req.body.package];
+  const pkgKey = req.body.package;
+  const pkg = DIAMOND_PACKAGES[pkgKey];
   if (!pkg) return res.status(400).json({ error: 'unknown_package' });
 
   try {
     const link = await bot.telegram.createInvoiceLink({
       title: pkg.label,
-      description: `${pkg.cases} ta Premium Case sotib olasiz`,
-      payload: JSON.stringify({ telegramId: user.id, package: req.body.package }),
-      provider_token: '',
+      description: `${pkg.diamonds.toLocaleString('ru-RU')} diamond hisobingizga qo'shiladi`,
+      payload: JSON.stringify({ telegramId: user.id, package: pkgKey }),
+      provider_token: '', // Stars (XTR) uchun bo'sh qoldiriladi
       currency: 'XTR',
       prices: [{ label: pkg.label, amount: pkg.stars }],
     });
@@ -228,7 +270,7 @@ app.post('/api/create-invoice', async (req, res) => {
   }
 });
 
-// --- Bot: pre_checkout ---
+// --- Bot: to'lovdan oldingi tekshiruv (majburiy javob berish kerak) ---
 bot.on('pre_checkout_query', (ctx) => {
   ctx.answerPreCheckoutQuery(true).catch(console.error);
 });
@@ -238,31 +280,31 @@ bot.on('message', (ctx, next) => {
   const payment = ctx.message?.successful_payment;
   if (payment) {
     const payload = JSON.parse(payment.invoice_payload);
-    const pkg = STARS_PACKAGES[payload.package];
+    const pkg = DIAMOND_PACKAGES[payload.package];
     if (pkg) {
       getOrCreateUser(payload.telegramId, ctx.from.username);
-      db.prepare('UPDATE users SET premium_cases = premium_cases + ? WHERE telegram_id = ?')
-        .run(pkg.cases, payload.telegramId);
-      db.prepare('INSERT INTO payments (telegram_id, stars_amount, cases_granted, telegram_payment_charge_id) VALUES (?, ?, ?, ?)')
-        .run(payload.telegramId, payment.total_amount, pkg.cases, payment.telegram_payment_charge_id);
-      ctx.reply(`✅ Rahmat! ${pkg.cases} ta Premium Case hisobingizga qo'shildi!`);
+      db.prepare('UPDATE users SET diamonds = diamonds + ? WHERE telegram_id = ?')
+        .run(pkg.diamonds, payload.telegramId);
+      db.prepare('INSERT INTO payments (telegram_id, stars_amount, diamonds_granted, telegram_payment_charge_id) VALUES (?, ?, ?, ?)')
+        .run(payload.telegramId, payment.total_amount, pkg.diamonds, payment.telegram_payment_charge_id);
+      ctx.reply(`✅ Rahmat! ${pkg.diamonds.toLocaleString('ru-RU')} 💎 hisobingizga qo'shildi. Mini App'ni oching!`);
     }
     return;
   }
   return next();
 });
 
-// --- Bot: /start ---
+// --- Bot: /start komandasi ---
 bot.start((ctx) => {
   const refMatch = ctx.message.text.match(/ref_(\d+)/);
-  const referredBy = refMatch ? parseInt(refMatch[1]) : null;
+  const referredBy = refMatch ? parseInt(refMatch[1], 10) : null;
   getOrCreateUser(ctx.from.id, ctx.from.username, referredBy);
 
   ctx.reply(
-    '🎁 Xush kelibsiz! Bepul case oching va CS2 qurollari yutib oling!',
+    "🎁 Xush kelibsiz! Bepul keysni oching va sovg'a yutib oling!",
     {
       reply_markup: {
-        inline_keyboard: [[{ text: '🔫 CS2 Case Ochish', web_app: { url: WEBAPP_URL } }]],
+        inline_keyboard: [[{ text: '🎁 Keyslarni ochish', web_app: { url: WEBAPP_URL } }]],
       },
     }
   );
@@ -271,5 +313,5 @@ bot.start((ctx) => {
 bot.launch();
 app.listen(PORT, () => console.log(`Server ${PORT}-portda ishlamoqda`));
 
-process.once('SIGINT',  () => bot.stop('SIGINT'));
+process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

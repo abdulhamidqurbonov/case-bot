@@ -9,8 +9,8 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   telegram_id INTEGER PRIMARY KEY,
   username TEXT,
+  diamonds INTEGER DEFAULT 0,
   free_cases_left INTEGER DEFAULT 1,
-  premium_cases INTEGER DEFAULT 0,
   last_free_case_at INTEGER DEFAULT 0,
   referred_by INTEGER,
   created_at INTEGER DEFAULT (strftime('%s','now'))
@@ -19,9 +19,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS case_openings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   telegram_id INTEGER,
+  case_id TEXT,
+  case_name TEXT,
   prize_name TEXT,
   prize_value INTEGER,
-  was_premium INTEGER DEFAULT 0,
+  prize_icon TEXT DEFAULT 'pistol',
+  prize_rarity TEXT DEFAULT 'common',
+  cost_diamonds INTEGER DEFAULT 0,
   opened_at INTEGER DEFAULT (strftime('%s','now'))
 );
 
@@ -29,7 +33,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   telegram_id INTEGER,
   stars_amount INTEGER,
-  cases_granted INTEGER,
+  diamonds_granted INTEGER,
   telegram_payment_charge_id TEXT,
   created_at INTEGER DEFAULT (strftime('%s','now'))
 );
