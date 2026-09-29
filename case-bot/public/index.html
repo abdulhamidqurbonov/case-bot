@@ -1120,9 +1120,22 @@ async function api(url, body=null) {
     method: body ? 'POST' : 'GET',
     headers: {'Content-Type':'application/json'},
   };
-  if (body) opts.body = JSON.stringify({initData, ...body});
-  const r = await fetch(url, opts);
-  return r.json();
+
+  if (body) {
+    opts.body = JSON.stringify({ initData, ...body });
+  }
+
+  try {
+    const r = await fetch(url, opts);
+    const text = await r.text();
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return { ok: r.ok, raw: text };
+    }
+  } catch (err) {
+    return { ok: false, detail: 'network_error', error: String(err) };
+  }
 }
 
 /* ════════════════════════════════════════════
@@ -1199,9 +1212,14 @@ function buildTicker() {
 ════════════════════════════════════════════ */
 async function loadMe() {
   const d = await api('/api/me');
-  meData  = d;
+  if (!d || !d.ok && d.detail === 'invalid_init_data' || !d.starsBalance && d.detail === 'invalid_init_data') {
+    document.getElementById('starsTop').textContent = 0;
+    document.getElementById('balAmt').textContent = 0;
+    return;
+  }
+  meData = d;
   document.getElementById('starsTop').textContent = d.starsBalance ?? 0;
-  document.getElementById('balAmt').textContent   = d.starsBalance ?? 0;
+  document.getElementById('balAmt').textContent = d.starsBalance ?? 0;
 }
 
 /* ════════════════════════════════════════════
@@ -1209,7 +1227,11 @@ async function loadMe() {
 ════════════════════════════════════════════ */
 async function loadHomeTasks() {
   const el = document.getElementById('homeTasks');
-  const d  = await api('/api/tasks');
+  const d = await api('/api/tasks');
+  if (!d || d.detail === 'invalid_init_data') {
+    el.innerHTML = '<div style="text-align:center;color:var(--txt2);padding:24px;font-size:13px">Telegram ichida ochilishi kerak</div>';
+    return;
+  }
   const tasks = d.tasks || [];
   if (!tasks.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--txt2);padding:24px;font-size:13px">Hozircha vazifalar yo\'q</div>';
@@ -1708,11 +1730,17 @@ async function loadLeaderboard() {
 ════════════════════════════════════════════ */
 async function init() {
   buildTicker();
-  await Promise.all([loadMe(), loadCases(), loadHomeTasks()]);
-  // Loader yashirish
+
+  await Promise.allSettled([
+    loadMe(),
+    loadCases(),
+    loadHomeTasks(),
+  ]);
+
   setTimeout(() => {
-    document.getElementById('loader').classList.add('hidden');
-  }, 1200);
+    const loader = document.getElementById('loader');
+    if (loader) loader.classList.add('hidden');
+  }, 600);
 }
 
 init();
