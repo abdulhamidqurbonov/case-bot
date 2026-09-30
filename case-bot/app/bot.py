@@ -31,37 +31,46 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     db_user = get_or_create_user(user.id, user.username, user.first_name)
 
     if ref_id and ref_id != user.id:
-        from app.database import supabase
-        already = supabase.table("referrals").select("id").eq("referred_id", user.id).execute()
-        if not already.data:
-            supabase.table("referrals").insert({
-                "referrer_id": ref_id,
-                "referred_id": user.id,
-            }).execute()
-            supabase.table("users").update({
-                "premium_cases": db_user["premium_cases"] + 1
-            }).eq("telegram_id", ref_id).execute()
-            try:
-                await ctx.bot.send_message(
-                    ref_id,
-                    "🎉 Yangi referal! +1 Premium Case hisobingizga qo'shildi!"
+        from app.database import get_conn
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM referrals WHERE referred_id=%s",
+                    (user.id,)
                 )
-            except Exception:
-                pass
+                already = cur.fetchone()
+                if not already:
+                    cur.execute(
+                        "INSERT INTO referrals (referrer_id, referred_id) VALUES (%s,%s)",
+                        (ref_id, user.id)
+                    )
+                    cur.execute(
+                        "UPDATE users SET premium_cases=premium_cases+1 WHERE telegram_id=%s",
+                        (ref_id,)
+                    )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        finally:
+            conn.close()
+        try:
+            await ctx.bot.send_message(
+                ref_id,
+                "Yangi referal! +1 Premium Case hisobingizga qoshildi!"
+            )
+        except Exception:
+            pass
 
     kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton(
-            "🎮 O'yinni boshlash",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )
+        InlineKeyboardButton("Oyinni boshlash", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
+    name = user.first_name or "Foydalanuvchi"
     await update.message.reply_text(
-        f"👋 Salom, {user.first_name}!\n\n"
-        "🔫 <b>CS2 Cases Bot</b> ga xush kelibsiz!\n\n"
-        "• Case oching va skinlar yutib oling\n"
-        "• Har kuni bepul case sizni kutmoqda 🎁\n"
-        "• Yutgan skinlarni Steam orqali oling\n\n"
-        "⬇️ Bosing va boshlang!",
+        "<b>CS2 Cases Bot</b> ga xush kelibsiz, " + name + "!\n\n"
+        "Case oching va skinlar yutib oling!\n"
+        "Har kuni bepul case sizni kutmoqda\n\n"
+        "Bosing va boshlang!",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -70,11 +79,13 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def cmd_me(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user    = update.effective_user
     db_user = get_or_create_user(user.id, user.username, user.first_name)
+    has_steam = db_user.get("steam_trade_url")
+    steam_txt = "Qoshilgan" if has_steam else "Yoq — /setsteam bilan qoshing"
     await update.message.reply_text(
-        f"👤 <b>Profilingiz</b>\n\n"
-        f"💎 Premium caselar: <b>{db_user['premium_cases']}</b>\n"
-        f"⭐ Stars balansi: <b>{db_user['stars_balance']}</b>\n"
-        f"🔗 Steam URL: {'✅ Qo\'shilgan' if db_user.get('steam_trade_url') else '❌ Yo\'q — /setsteam bilan qo\'shing'}",
+        "<b>Profilingiz</b>\n\n"
+        "Premium caselar: <b>" + str(db_user["premium_cases"]) + "</b>\n"
+        "Stars balansi: <b>" + str(db_user["stars_balance"]) + "</b>\n"
+        "Steam URL: " + steam_txt,
         parse_mode="HTML"
     )
 
@@ -84,19 +95,19 @@ async def cmd_setsteam(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args
     if not args:
         await update.message.reply_text(
-            "📋 <b>Steam Trade URL qo'shish:</b>\n\n"
+            "<b>Steam Trade URL qoshish:</b>\n\n"
             "Steam → Inventar → Trade offers → Trade URL\n\n"
-            "Quyidagi formatda yuboring:\n"
+            "Format:\n"
             "<code>/setsteam https://steamcommunity.com/tradeoffer/new/?partner=...</code>",
             parse_mode="HTML"
         )
         return
     url = args[0]
     if "steamcommunity.com/tradeoffer" not in url:
-        await update.message.reply_text("❌ Noto'g'ri URL. Steam trade link bo'lishi kerak.")
+        await update.message.reply_text("Notogri URL. Steam trade link bolishi kerak.")
         return
     set_steam_url(user.id, url)
-    await update.message.reply_text("✅ Steam Trade URL saqlandi!")
+    await update.message.reply_text("Steam Trade URL saqlandi!")
 
 
 async def pre_checkout(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -112,27 +123,13 @@ async def successful_payment(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     save_payment(user.id, pay.total_amount, pkg["cases"], pay.telegram_payment_charge_id)
     await update.message.reply_text(
-        f"✅ <b>To'lov qabul qilindi!</b>\n\n"
-        f"💎 {pkg['cases']} ta Premium Case hisobingizga qo'shildi!\n"
-        f"⭐ {pay.total_amount} Stars sarflandi",
+        "<b>Tolov qabul qilindi!</b>\n\n"
+        + str(pkg["cases"]) + " ta Premium Case hisobingizga qoshildi!\n"
+        + str(pay.total_amount) + " Stars sarflandi",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🎮 Case ochish", web_app=WebAppInfo(url=WEBAPP_URL))
+            InlineKeyboardButton("Case ochish", web_app=WebAppInfo(url=WEBAPP_URL))
         ]])
-    )
-
-
-async def admin_withdraw_notify(prize_name: str, steam_url: str, username: str, req_id: int):
-    if not bot_instance or not ADMIN_CHAT_ID:
-        return
-    await bot_instance.send_message(
-        ADMIN_CHAT_ID,
-        f"📦 <b>Yangi chiqarish so'rovi #{req_id}</b>\n\n"
-        f"👤 @{username or 'Noma\'lum'}\n"
-        f"🔫 Skin: <b>{prize_name}</b>\n"
-        f"🔗 Trade URL:\n<code>{steam_url}</code>\n\n"
-        f"Yuborgach: /confirm_{req_id}",
-        parse_mode="HTML"
     )
 
 
@@ -143,38 +140,29 @@ async def cmd_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         req_id = int(text.replace("/confirm_", "").strip())
     except ValueError:
-        await update.message.reply_text("❌ Format: /confirm_123")
+        await update.message.reply_text("Format: /confirm_123")
         return
 
-    from app.database import supabase
-    from datetime import datetime, timezone
-
-    req = supabase.table("withdraw_requests").select("*").eq("id", req_id).single().execute().data
+    from app.database import confirm_withdraw
+    req = confirm_withdraw(req_id)
     if not req:
-        await update.message.reply_text("❌ So'rov topilmadi")
+        await update.message.reply_text("Sorov topilmadi")
         return
-
-    supabase.table("withdraw_requests").update({
-        "status":       "sent",
-        "processed_at": datetime.now(timezone.utc).isoformat()
-    }).eq("id", req_id).execute()
-    supabase.table("inventory").update({"status": "withdrawn"}).eq("id", req["inventory_id"]).execute()
 
     try:
         await bot_instance.send_message(
             req["telegram_id"],
-            f"✅ <b>Skin yuborildi!</b>\n\n"
-            f"🔫 {req['prize_name']} Steam ga yuborildi.\n"
-            f"Trade offeringizni tekshiring!",
+            "<b>Skin yuborildi!</b>\n\n"
+            + str(req["prize_name"]) + " Steam ga yuborildi.\n"
+            "Trade offeringizni tekshiring!",
             parse_mode="HTML"
         )
     except Exception:
         pass
-    await update.message.reply_text(f"✅ #{req_id} tasdiqlandi!")
+    await update.message.reply_text("Tasdiqlandi — #" + str(req_id))
 
 
 def build_app() -> Application:
-    """Application obyektini yaratadi (webhook uchun)"""
     global _app, bot_instance
     application = Application.builder().token(BOT_TOKEN).build()
     bot_instance = application.bot
