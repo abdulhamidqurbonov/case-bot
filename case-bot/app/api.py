@@ -2,20 +2,29 @@ import hmac
 import hashlib
 import json
 import time
+import os
 from datetime import datetime, timezone, timedelta
 from urllib.parse import parse_qs
 from functools import wraps
 
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.config import BOT_TOKEN, ADMIN_CHAT_ID, FREE_CASE_COOLDOWN_H, MIN_WITHDRAW_STARS
 from app.database import (
-    get_or_create_user, save_opening, update_free_case_time,
-    deduct_premium_case, get_inventory, sell_item,
-    create_withdraw_request, get_completed_tasks, complete_task,
-    get_leaderboard, supabase
+    get_or_create_user,
+    save_opening,
+    update_free_case_time,
+    get_inventory,
+    sell_item,
+    create_withdraw_request,
+    confirm_withdraw,
+    get_completed_tasks,
+    complete_task,
+    get_leaderboard,
+    save_payment,
+    set_steam_url,
 )
 from app.prizes import pick_prize, get_case, CASES, PACKAGES
 
@@ -57,15 +66,15 @@ async def api_me(body: InitDataBody):
     user    = get_user_or_401(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
 
-    # Bepul case holati
-    free_used_at  = db_user.get("free_case_used_at")
     free_available = True
     seconds_left   = 0
+    free_used_at   = db_user.get("free_case_used_at")
+
     if free_used_at:
         if isinstance(free_used_at, str):
             used_dt = datetime.fromisoformat(free_used_at.replace("Z", "+00:00"))
         else:
-            used_dt = free_used_at
+            used_dt = free_used_at.replace(tzinfo=timezone.utc) if free_used_at.tzinfo is None else free_used_at
         next_free = used_dt + timedelta(hours=FREE_CASE_COOLDOWN_H)
         now       = datetime.now(timezone.utc)
         if now < next_free:
@@ -73,14 +82,14 @@ async def api_me(body: InitDataBody):
             seconds_left   = int((next_free - now).total_seconds())
 
     return {
-        "telegramId":     db_user["telegram_id"],
-        "username":       db_user.get("username"),
-        "firstName":      db_user.get("first_name"),
-        "starsBalance":   db_user["stars_balance"],
-        "premiumCases":   db_user["premium_cases"],
-        "freeAvailable":  free_available,
+        "telegramId":      db_user["telegram_id"],
+        "username":        db_user.get("username"),
+        "firstName":       db_user.get("first_name"),
+        "starsBalance":    db_user["stars_balance"],
+        "premiumCases":    db_user["premium_cases"],
+        "freeAvailable":   free_available,
         "freeSecondsLeft": seconds_left,
-        "steamUrl":       db_user.get("steam_trade_url", ""),
+        "steamUrl":        db_user.get("steam_trade_url", ""),
     }
 
 
@@ -108,7 +117,6 @@ async def api_open_case(body: OpenCaseBody):
 
     qty     = max(1, min(body.qty, 10))
     is_free = (case["price"] == 0)
-    results = []
 
     # ── Bepul case ──
     if is_free:
@@ -117,25 +125,36 @@ async def api_open_case(body: OpenCaseBody):
             if isinstance(free_used_at, str):
                 used_dt = datetime.fromisoformat(free_used_at.replace("Z", "+00:00"))
             else:
-                used_dt = free_used_at
+                used_dt = free_used_at.replace(tzinfo=timezone.utc) if free_used_at.tzinfo is None else free_used_at
             next_free = used_dt + timedelta(hours=FREE_CASE_COOLDOWN_H)
             if datetime.now(timezone.utc) < next_free:
                 raise HTTPException(status_code=400, detail="free_case_cooldown")
+
         prize    = pick_prize(body.caseId)
         inv_item = save_opening(user["id"], body.caseId, prize, was_free=True)
         update_free_case_time(user["id"])
         return {"results": [{**prize, "inventoryId": inv_item["id"]}], "wasFree": True}
 
-    # ── Premium case (Stars bilan) ──
+    # ── Pullik case ──
     cost = case["price"] * qty
     if db_user["stars_balance"] < cost:
         raise HTTPException(status_code=400, detail="insufficient_stars")
 
     # Balansdan ayirish
-    supabase.table("users").update({
-        "stars_balance": db_user["stars_balance"] - cost
-    }).eq("telegram_id", user["id"]).execute()
+    import psycopg2
+    from app.database import get_conn
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET stars_balance = stars_balance - %s WHERE telegram_id = %s",
+                (cost, user["id"])
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
+    results = []
     for _ in range(qty):
         prize    = pick_prize(body.caseId)
         inv_item = save_opening(user["id"], body.caseId, prize, was_free=False)
@@ -152,7 +171,7 @@ async def api_inventory(body: InitDataBody):
     return {"items": items}
 
 
-# ── /api/sell ────────────────────────────────────────────────────────
+# ── /api/sell ─────────────────────────────────────────────────────────
 class SellBody(BaseModel):
     initData:    str = ""
     inventoryId: int = 0
@@ -178,32 +197,26 @@ async def api_withdraw(body: WithdrawBody):
     user    = get_user_or_401(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"))
 
-    # Steam URL bormi?
     if not db_user.get("steam_trade_url"):
         raise HTTPException(status_code=400, detail="no_steam_url")
-
-    # Minimum to'lov tekshirish
-    # (Ixtiyoriy — o'chirib tashlashingiz mumkin)
-    # total_spent = db_user["stars_balance"]
-    # if total_spent < MIN_WITHDRAW_STARS:
-    #     raise HTTPException(status_code=400, detail="min_payment_required")
 
     req = create_withdraw_request(user["id"], body.inventoryId)
     if not req:
         raise HTTPException(status_code=400, detail="withdraw_failed")
 
-    # Adminga xabar yuborish
+    # Adminga xabar
     try:
-        from app.bot import admin_withdraw_notify
-        import asyncio
-        asyncio.create_task(
-            admin_withdraw_notify(
-                req["prize_name"],
-                req["steam_trade_url"],
-                user.get("username", ""),
-                req["id"]
+        from app.bot import bot_instance
+        if bot_instance and ADMIN_CHAT_ID:
+            await bot_instance.send_message(
+                ADMIN_CHAT_ID,
+                f"📦 <b>Yangi chiqarish so'rovi #{req['id']}</b>\n\n"
+                f"👤 @{user.get('username', 'Noma\'lum')}\n"
+                f"🔫 Skin: <b>{req['prize_name']}</b>\n"
+                f"🔗 Trade URL:\n<code>{req['steam_trade_url']}</code>\n\n"
+                f"Yuborgach: /confirm_{req['id']}",
+                parse_mode="HTML"
             )
-        )
     except Exception:
         pass
 
@@ -221,43 +234,26 @@ async def api_set_steam(body: SteamBody):
     user = get_user_or_401(body.initData)
     if "steamcommunity.com/tradeoffer" not in body.url:
         raise HTTPException(status_code=400, detail="invalid_url")
-    from app.database import set_steam_url
     set_steam_url(user["id"], body.url)
     return {"success": True}
 
 
 # ── /api/tasks ────────────────────────────────────────────────────────
-TASKS_LIST = [
-    {
-        "id":       "join_channel",
-        "title":    "Kanalga obuna bo'ling",
-        "reward":   1,
-        "channel":  "",   # .env dan CHANNEL_USERNAME o'qiladi
-    },
-    {
-        "id":       "invite_friend",
-        "title":    "Do'st taklif qiling",
-        "reward":   2,
-        "channel":  None,
-    },
-]
-
-
 @router.post("/api/tasks")
 async def api_tasks(body: InitDataBody):
-    import os
     user      = get_user_or_401(body.initData)
     completed = get_completed_tasks(user["id"])
     channel   = os.getenv("CHANNEL_USERNAME", "")
 
     tasks = []
-    for t in TASKS_LIST:
-        if t["id"] == "join_channel" and not channel:
-            continue
+    if channel:
         tasks.append({
-            **t,
-            "channel":   channel if t["id"] == "join_channel" else t.get("channel"),
-            "completed": t["id"] in completed,
+            "id":        "join_channel",
+            "title":     "Kanalga obuna bo'ling",
+            "subtitle":  channel,
+            "reward":    1,
+            "completed": "join_channel" in completed,
+            "channel":   channel,
         })
     return {"tasks": tasks}
 
@@ -270,8 +266,6 @@ class TaskCheckBody(BaseModel):
 
 @router.post("/api/tasks/check")
 async def api_task_check(body: TaskCheckBody):
-    import os
-    from app.bot import bot_instance
     user      = get_user_or_401(body.initData)
     completed = get_completed_tasks(user["id"])
 
@@ -283,6 +277,7 @@ async def api_task_check(body: TaskCheckBody):
         if not channel:
             raise HTTPException(status_code=400, detail="no_channel")
         try:
+            from app.bot import bot_instance
             member = await bot_instance.get_chat_member(channel, user["id"])
             if member.status not in ("member", "administrator", "creator"):
                 raise HTTPException(status_code=400, detail="not_member")
@@ -290,6 +285,7 @@ async def api_task_check(body: TaskCheckBody):
             raise
         except Exception:
             raise HTTPException(status_code=500, detail="check_failed")
+
         complete_task(user["id"], "join_channel", 1)
         return {"success": True, "reward": 1}
 
@@ -299,8 +295,7 @@ async def api_task_check(body: TaskCheckBody):
 # ── /api/leaderboard ─────────────────────────────────────────────────
 @router.get("/api/leaderboard")
 async def api_leaderboard():
-    rows = get_leaderboard()
-    return {"leaderboard": rows}
+    return {"leaderboard": get_leaderboard()}
 
 
 # ── /api/profile ─────────────────────────────────────────────────────
@@ -309,32 +304,44 @@ async def api_profile(body: InitDataBody):
     user    = get_user_or_401(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
 
-    stats = supabase.table("case_openings") \
-        .select("prize_value") \
-        .eq("telegram_id", user["id"]) \
-        .execute()
-    wins       = len(stats.data or [])
-    total_val  = sum(r["prize_value"] for r in (stats.data or []))
-
-    refs = supabase.table("referrals").select("id").eq("referrer_id", user["id"]).execute()
-
-    created = db_user.get("created_at", "")
+    from app.database import get_conn
+    conn = get_conn()
     try:
-        created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) as wins, COALESCE(SUM(prize_value),0) as total_value"
+                " FROM case_openings WHERE telegram_id=%s",
+                (user["id"],)
+            )
+            stats = dict(cur.fetchone())
+            cur.execute(
+                "SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id=%s",
+                (user["id"],)
+            )
+            refs = cur.fetchone()["cnt"]
+    finally:
+        conn.close()
+
+    created = db_user.get("created_at")
+    try:
+        if isinstance(created, str):
+            created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        else:
+            created_dt = created.replace(tzinfo=timezone.utc) if created.tzinfo is None else created
         days = max(1, (datetime.now(timezone.utc) - created_dt).days + 1)
     except Exception:
         days = 1
 
     return {
-        "username":   db_user.get("username"),
-        "firstName":  db_user.get("first_name"),
+        "username":     db_user.get("username"),
+        "firstName":    db_user.get("first_name"),
         "starsBalance": db_user["stars_balance"],
         "premiumCases": db_user["premium_cases"],
-        "wins":       wins,
-        "totalValue": total_val,
-        "referrals":  len(refs.data or []),
-        "daysWithUs": days,
-        "steamUrl":   db_user.get("steam_trade_url", ""),
+        "wins":         stats["wins"],
+        "totalValue":   stats["total_value"],
+        "referrals":    refs,
+        "daysWithUs":   days,
+        "steamUrl":     db_user.get("steam_trade_url", ""),
     }
 
 
@@ -346,12 +353,12 @@ class InvoiceBody(BaseModel):
 
 @router.post("/api/create-invoice")
 async def api_create_invoice(body: InvoiceBody):
-    from app.bot import bot_instance
     user = get_user_or_401(body.initData)
     pkg  = PACKAGES.get(body.package)
     if not pkg:
         raise HTTPException(status_code=400, detail="unknown_package")
     try:
+        from app.bot import bot_instance
         link = await bot_instance.create_invoice_link(
             title=pkg["label"],
             description=f"{pkg['cases']} ta Premium Case oching",
@@ -368,9 +375,17 @@ async def api_create_invoice(body: InvoiceBody):
 # ── /api/referral ─────────────────────────────────────────────────────
 @router.post("/api/referral")
 async def api_referral(body: InitDataBody):
-    import os
     user    = get_user_or_401(body.initData)
     bot_un  = os.getenv("BOT_USERNAME", "")
     link    = f"https://t.me/{bot_un}?start=ref_{user['id']}" if bot_un else ""
-    refs    = supabase.table("referrals").select("id").eq("referrer_id", user["id"]).execute()
-    return {"link": link, "referralCount": len(refs.data or [])}
+
+    from app.database import get_conn
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id=%s", (user["id"],))
+            count = cur.fetchone()["cnt"]
+    finally:
+        conn.close()
+
+    return {"link": link, "referralCount": count}
