@@ -1,41 +1,29 @@
 import hmac
 import hashlib
 import json
-import time
 import os
 from datetime import datetime, timezone, timedelta
 from urllib.parse import parse_qs
-from functools import wraps
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from app.config import BOT_TOKEN, ADMIN_CHAT_ID, FREE_CASE_COOLDOWN_H, MIN_WITHDRAW_STARS
+from app.config import BOT_TOKEN, ADMIN_CHAT_ID, FREE_CASE_COOLDOWN_H
 from app.database import (
-    get_or_create_user,
-    save_opening,
-    update_free_case_time,
-    get_inventory,
-    sell_item,
-    create_withdraw_request,
-    confirm_withdraw,
-    get_completed_tasks,
-    complete_task,
-    get_leaderboard,
-    save_payment,
-    set_steam_url,
+    get_or_create_user, save_opening, update_free_case_time,
+    get_inventory, sell_item, create_withdraw_request,
+    get_completed_tasks, complete_task, get_leaderboard,
+    save_payment, set_steam_url, get_conn,
 )
 from app.prizes import pick_prize, get_case, CASES, PACKAGES
 
 router = APIRouter()
 
 
-# ── initData tekshirish ───────────────────────────────────────────────
-def verify_init_data(init_data: str) -> dict | None:
+def verify_init_data(init_data: str):
     try:
-        params = dict(parse_qs(init_data, keep_blank_values=True))
-        params = {k: v[0] for k, v in params.items()}
+        params   = {k: v[0] for k, v in parse_qs(init_data, keep_blank_values=True).items()}
         received = params.pop("hash", None)
         if not received:
             return None
@@ -49,11 +37,11 @@ def verify_init_data(init_data: str) -> dict | None:
         return None
 
 
-class InitDataBody(BaseModel):
+class Body(BaseModel):
     initData: str = ""
 
 
-def get_user_or_401(init_data: str):
+def auth(init_data: str):
     user = verify_init_data(init_data)
     if not user:
         raise HTTPException(status_code=401, detail="invalid_init_data")
@@ -62,19 +50,17 @@ def get_user_or_401(init_data: str):
 
 # ── /api/me ───────────────────────────────────────────────────────────
 @router.post("/api/me")
-async def api_me(body: InitDataBody):
-    user    = get_user_or_401(body.initData)
+async def api_me(body: Body):
+    user    = auth(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
 
     free_available = True
     seconds_left   = 0
-    free_used_at   = db_user.get("free_case_used_at")
-
-    if free_used_at:
-        if isinstance(free_used_at, str):
-            used_dt = datetime.fromisoformat(free_used_at.replace("Z", "+00:00"))
-        else:
-            used_dt = free_used_at.replace(tzinfo=timezone.utc) if free_used_at.tzinfo is None else free_used_at
+    raw = db_user.get("free_case_used_at")
+    if raw:
+        used_dt   = raw if hasattr(raw, "tzinfo") else datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if used_dt.tzinfo is None:
+            used_dt = used_dt.replace(tzinfo=timezone.utc)
         next_free = used_dt + timedelta(hours=FREE_CASE_COOLDOWN_H)
         now       = datetime.now(timezone.utc)
         if now < next_free:
@@ -89,7 +75,7 @@ async def api_me(body: InitDataBody):
         "premiumCases":    db_user["premium_cases"],
         "freeAvailable":   free_available,
         "freeSecondsLeft": seconds_left,
-        "steamUrl":        db_user.get("steam_trade_url", ""),
+        "steamUrl":        db_user.get("steam_trade_url") or "",
     }
 
 
@@ -100,49 +86,40 @@ async def api_cases():
 
 
 # ── /api/open-case ────────────────────────────────────────────────────
-class OpenCaseBody(BaseModel):
+class OpenBody(BaseModel):
     initData: str = ""
     caseId:   str = "free"
     qty:      int = 1
 
 
 @router.post("/api/open-case")
-async def api_open_case(body: OpenCaseBody):
-    user    = get_user_or_401(body.initData)
+async def api_open_case(body: OpenBody):
+    user    = auth(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
     case    = get_case(body.caseId)
-
     if not case:
         raise HTTPException(status_code=400, detail="unknown_case")
 
     qty     = max(1, min(body.qty, 10))
     is_free = (case["price"] == 0)
 
-    # ── Bepul case ──
     if is_free:
-        free_used_at = db_user.get("free_case_used_at")
-        if free_used_at:
-            if isinstance(free_used_at, str):
-                used_dt = datetime.fromisoformat(free_used_at.replace("Z", "+00:00"))
-            else:
-                used_dt = free_used_at.replace(tzinfo=timezone.utc) if free_used_at.tzinfo is None else free_used_at
-            next_free = used_dt + timedelta(hours=FREE_CASE_COOLDOWN_H)
-            if datetime.now(timezone.utc) < next_free:
+        raw = db_user.get("free_case_used_at")
+        if raw:
+            used_dt = raw if hasattr(raw, "tzinfo") else datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if used_dt.tzinfo is None:
+                used_dt = used_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < used_dt + timedelta(hours=FREE_CASE_COOLDOWN_H):
                 raise HTTPException(status_code=400, detail="free_case_cooldown")
-
         prize    = pick_prize(body.caseId)
         inv_item = save_opening(user["id"], body.caseId, prize, was_free=True)
         update_free_case_time(user["id"])
         return {"results": [{**prize, "inventoryId": inv_item["id"]}], "wasFree": True}
 
-    # ── Pullik case ──
     cost = case["price"] * qty
     if db_user["stars_balance"] < cost:
         raise HTTPException(status_code=400, detail="insufficient_stars")
 
-    # Balansdan ayirish
-    import psycopg2
-    from app.database import get_conn
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -165,10 +142,9 @@ async def api_open_case(body: OpenCaseBody):
 
 # ── /api/inventory ────────────────────────────────────────────────────
 @router.post("/api/inventory")
-async def api_inventory(body: InitDataBody):
-    user  = get_user_or_401(body.initData)
-    items = get_inventory(user["id"])
-    return {"items": items}
+async def api_inventory(body: Body):
+    user = auth(body.initData)
+    return {"items": get_inventory(user["id"])}
 
 
 # ── /api/sell ─────────────────────────────────────────────────────────
@@ -179,11 +155,11 @@ class SellBody(BaseModel):
 
 @router.post("/api/sell")
 async def api_sell(body: SellBody):
-    user   = get_user_or_401(body.initData)
+    user   = auth(body.initData)
     reward = sell_item(body.inventoryId, user["id"])
     if reward == 0:
         raise HTTPException(status_code=400, detail="item_not_found")
-    return {"reward": reward, "message": f"+{reward} Stars balansga qo'shildi"}
+    return {"reward": reward, "message": "+" + str(reward) + " Stars balansga qoshildi"}
 
 
 # ── /api/withdraw ─────────────────────────────────────────────────────
@@ -194,7 +170,7 @@ class WithdrawBody(BaseModel):
 
 @router.post("/api/withdraw")
 async def api_withdraw(body: WithdrawBody):
-    user    = get_user_or_401(body.initData)
+    user    = auth(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"))
 
     if not db_user.get("steam_trade_url"):
@@ -204,19 +180,21 @@ async def api_withdraw(body: WithdrawBody):
     if not req:
         raise HTTPException(status_code=400, detail="withdraw_failed")
 
-    # Adminga xabar
     try:
         from app.bot import bot_instance
         if bot_instance and ADMIN_CHAT_ID:
-            await bot_instance.send_message(
-                ADMIN_CHAT_ID,
-                f"📦 <b>Yangi chiqarish so'rovi #{req['id']}</b>\n\n"
-                f"👤 @{user.get('username', 'Noma\'lum')}\n"
-                f"🔫 Skin: <b>{req['prize_name']}</b>\n"
-                f"🔗 Trade URL:\n<code>{req['steam_trade_url']}</code>\n\n"
-                f"Yuborgach: /confirm_{req['id']}",
-                parse_mode="HTML"
+            req_id    = str(req["id"])
+            uname     = user.get("username") or "Noma'lum"
+            prize_n   = req["prize_name"]
+            trade_url = req["steam_trade_url"]
+            msg = (
+                "\U0001f4e6 <b>Yangi chiqarish sorovi #" + req_id + "</b>\n\n"
+                + "\U0001f464 @" + uname + "\n"
+                + "\U0001f52b Skin: <b>" + prize_n + "</b>\n"
+                + "\U0001f517 Trade URL:\n<code>" + trade_url + "</code>\n\n"
+                + "Yuborgach: /confirm_" + req_id
             )
+            await bot_instance.send_message(ADMIN_CHAT_ID, msg, parse_mode="HTML")
     except Exception:
         pass
 
@@ -231,7 +209,7 @@ class SteamBody(BaseModel):
 
 @router.post("/api/set-steam")
 async def api_set_steam(body: SteamBody):
-    user = get_user_or_401(body.initData)
+    user = auth(body.initData)
     if "steamcommunity.com/tradeoffer" not in body.url:
         raise HTTPException(status_code=400, detail="invalid_url")
     set_steam_url(user["id"], body.url)
@@ -240,12 +218,11 @@ async def api_set_steam(body: SteamBody):
 
 # ── /api/tasks ────────────────────────────────────────────────────────
 @router.post("/api/tasks")
-async def api_tasks(body: InitDataBody):
-    user      = get_user_or_401(body.initData)
+async def api_tasks(body: Body):
+    user      = auth(body.initData)
     completed = get_completed_tasks(user["id"])
     channel   = os.getenv("CHANNEL_USERNAME", "")
-
-    tasks = []
+    tasks     = []
     if channel:
         tasks.append({
             "id":        "join_channel",
@@ -259,19 +236,17 @@ async def api_tasks(body: InitDataBody):
 
 
 # ── /api/tasks/check ─────────────────────────────────────────────────
-class TaskCheckBody(BaseModel):
+class TaskBody(BaseModel):
     initData: str = ""
     taskId:   str = ""
 
 
 @router.post("/api/tasks/check")
-async def api_task_check(body: TaskCheckBody):
-    user      = get_user_or_401(body.initData)
+async def api_task_check(body: TaskBody):
+    user      = auth(body.initData)
     completed = get_completed_tasks(user["id"])
-
     if body.taskId in completed:
         raise HTTPException(status_code=400, detail="already_completed")
-
     if body.taskId == "join_channel":
         channel = os.getenv("CHANNEL_USERNAME", "")
         if not channel:
@@ -285,10 +260,8 @@ async def api_task_check(body: TaskCheckBody):
             raise
         except Exception:
             raise HTTPException(status_code=500, detail="check_failed")
-
         complete_task(user["id"], "join_channel", 1)
         return {"success": True, "reward": 1}
-
     raise HTTPException(status_code=400, detail="unknown_task")
 
 
@@ -300,11 +273,10 @@ async def api_leaderboard():
 
 # ── /api/profile ─────────────────────────────────────────────────────
 @router.post("/api/profile")
-async def api_profile(body: InitDataBody):
-    user    = get_user_or_401(body.initData)
+async def api_profile(body: Body):
+    user    = auth(body.initData)
     db_user = get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
 
-    from app.database import get_conn
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -327,7 +299,9 @@ async def api_profile(body: InitDataBody):
         if isinstance(created, str):
             created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
         else:
-            created_dt = created.replace(tzinfo=timezone.utc) if created.tzinfo is None else created
+            created_dt = created
+        if created_dt.tzinfo is None:
+            created_dt = created_dt.replace(tzinfo=timezone.utc)
         days = max(1, (datetime.now(timezone.utc) - created_dt).days + 1)
     except Exception:
         days = 1
@@ -341,7 +315,7 @@ async def api_profile(body: InitDataBody):
         "totalValue":   stats["total_value"],
         "referrals":    refs,
         "daysWithUs":   days,
-        "steamUrl":     db_user.get("steam_trade_url", ""),
+        "steamUrl":     db_user.get("steam_trade_url") or "",
     }
 
 
@@ -353,7 +327,7 @@ class InvoiceBody(BaseModel):
 
 @router.post("/api/create-invoice")
 async def api_create_invoice(body: InvoiceBody):
-    user = get_user_or_401(body.initData)
+    user = auth(body.initData)
     pkg  = PACKAGES.get(body.package)
     if not pkg:
         raise HTTPException(status_code=400, detail="unknown_package")
@@ -361,7 +335,7 @@ async def api_create_invoice(body: InvoiceBody):
         from app.bot import bot_instance
         link = await bot_instance.create_invoice_link(
             title=pkg["label"],
-            description=f"{pkg['cases']} ta Premium Case oching",
+            description=str(pkg["cases"]) + " ta Premium Case oching",
             payload=json.dumps({"telegramId": user["id"], "package": body.package}),
             provider_token="",
             currency="XTR",
@@ -374,12 +348,11 @@ async def api_create_invoice(body: InvoiceBody):
 
 # ── /api/referral ─────────────────────────────────────────────────────
 @router.post("/api/referral")
-async def api_referral(body: InitDataBody):
-    user    = get_user_or_401(body.initData)
-    bot_un  = os.getenv("BOT_USERNAME", "")
-    link    = f"https://t.me/{bot_un}?start=ref_{user['id']}" if bot_un else ""
+async def api_referral(body: Body):
+    user   = auth(body.initData)
+    bot_un = os.getenv("BOT_USERNAME", "")
+    link   = ("https://t.me/" + bot_un + "?start=ref_" + str(user["id"])) if bot_un else ""
 
-    from app.database import get_conn
     conn = get_conn()
     try:
         with conn.cursor() as cur:
