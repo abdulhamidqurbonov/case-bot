@@ -1000,9 +1000,7 @@ html,body{
   <div class="back-btn" onclick="nav('games')"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>O'yinlar</div>
   <div class="shop-wrap">
     <div class="shop-sub">⭐ Telegram Stars bilan to'ldiring</div>
-    <div class="pkg-card"><div class="pkg-left"><div class="pkg-icon">💎</div><div><div class="pkg-name">3 ta Premium Case</div><div class="pkg-sub">50 ⭐ Stars</div></div></div><button class="pkg-buy" data-pkg="small">Sotib olish</button></div>
-    <div class="pkg-card featured"><div class="pkg-left"><div class="pkg-icon">💎</div><div><div class="pkg-name">10 ta Premium Case</div><div class="pkg-sub">150 ⭐ Stars</div></div></div><button class="pkg-buy" data-pkg="medium">Sotib olish</button></div>
-    <div class="pkg-card"><div class="pkg-left"><div class="pkg-icon">💎</div><div><div class="pkg-name">40 ta Premium Case</div><div class="pkg-sub">500 ⭐ Stars</div></div></div><button class="pkg-buy" data-pkg="large">Sotib olish</button></div>
+    <div id="pkgList"><div class="empty-note"><span class="ei">⏳</span>Yuklanmoqda...</div></div>
   </div>
 </div>
 
@@ -1246,7 +1244,7 @@ async function loadHomeTasks() {
       <div class="task-info">
         <div class="task-title">${task.title}</div>
         <div class="task-sub">${task.channel || ''}</div>
-        <div class="task-rew">+${task.reward} 💎 Premium Case</div>
+        <div class="task-rew">+${task.reward} ⭐ Stars</div>
       </div>
       <button class="task-btn ${task.completed?'done':''}"
         data-id="${task.id}" data-ch="${task.channel||''}"
@@ -1262,7 +1260,7 @@ async function loadHomeTasks() {
       btn.textContent = '...'; btn.disabled = true;
       const r = await api('/api/tasks/check', {taskId: btn.dataset.id});
       if (r.success) {
-        toast(`✅ +${r.reward} Premium Case!`);
+        toast(`✅ +${r.reward} Stars!`);
         tg?.HapticFeedback?.notificationOccurred('success');
         loadHomeTasks(); loadMe();
       } else {
@@ -1454,6 +1452,10 @@ async function doOpen() {
   // Birinchi natija uchun reel ko'rsat
   const prize = r.results[0];
   showReel(prize);
+  if (r.results.length > 1) {
+    setTimeout(() => toast(`🎁 Yana ${r.results.length - 1} ta skin inventarga qo'shildi`), 800);
+    document.getElementById('invDot').classList.add('show');
+  }
   loadMe();
 }
 
@@ -1569,7 +1571,7 @@ document.getElementById('resInv').addEventListener('click', () => {
 document.getElementById('resSell').addEventListener('click', async () => {
   if (!currentPrize?.inventoryId) { document.getElementById('resultOv').classList.remove('show'); return; }
   const r = await api('/api/sell', {inventoryId: currentPrize.inventoryId});
-  toast(r.message || '💰 Sotildi!');
+  toast(r.message || (r.detail ? 'Xatolik: ' + r.detail : '💰 Sotildi!'));
   document.getElementById('resultOv').classList.remove('show');
   document.getElementById('openBtn').disabled = false;
   updateOpenBtn(); loadMe();
@@ -1599,18 +1601,40 @@ document.getElementById('resWd').addEventListener('click', async () => {
 /* ════════════════════════════════════════════
    DO'KON
 ════════════════════════════════════════════ */
-document.querySelectorAll('.pkg-buy').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const r = await api('/api/create-invoice', {package: btn.dataset.pkg});
-    if (r.invoiceLink) {
-      tg?.openInvoice(r.invoiceLink, status => {
-        if (status === 'paid') { toast('✅ To\'lov qabul qilindi!'); loadMe(); }
-      });
-    } else {
-      toast('Invoice yaratilmadi');
-    }
+async function loadShop() {
+  const box = document.getElementById('pkgList');
+  if (!box) return;
+  const d = await api('/api/packages');
+  const pkgs = d.packages || [];
+  if (!pkgs.length) { box.innerHTML = '<div class="empty-note">Paketlar topilmadi</div>'; return; }
+  box.innerHTML = '';
+  pkgs.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'pkg-card' + (i === 1 ? ' featured' : '');
+    const bonus = p.bonus ? ` <span style="color:#00E676">+${p.bonus} bonus</span>` : '';
+    card.innerHTML = `<div class="pkg-left"><div class="pkg-icon">⭐</div><div>
+        <div class="pkg-name">${p.stars.toLocaleString()} Stars${bonus}</div>
+        <div class="pkg-sub">${p.stars.toLocaleString()} ⭐ to'lov</div></div></div>
+      <button class="pkg-buy" data-pkg="${p.id}">Sotib olish</button>`;
+    box.appendChild(card);
   });
-});
+  box.querySelectorAll('.pkg-buy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const r = await api('/api/create-invoice', {package: btn.dataset.pkg});
+      btn.disabled = false;
+      if (r.invoiceLink) {
+        tg?.openInvoice(r.invoiceLink, status => {
+          if (status === 'paid') { toast('✅ To\'lov qabul qilindi!'); setTimeout(loadMe, 1500); }
+          else if (status === 'failed') toast('To\'lov amalga oshmadi');
+        });
+      } else {
+        toast('Invoice yaratilmadi');
+      }
+    });
+  });
+}
+loadShop();
 
 /* ════════════════════════════════════════════
    INVENTAR
@@ -1652,7 +1676,7 @@ async function loadInventory() {
   grid.querySelectorAll('.inv-sell').forEach(btn => {
     btn.addEventListener('click', async () => {
       const r = await api('/api/sell', {inventoryId: parseInt(btn.dataset.id)});
-      toast(r.message || '💰 Sotildi!');
+      toast(r.message || (r.detail ? 'Xatolik: ' + r.detail : '💰 Sotildi!'));
       loadInventory(); loadMe();
     });
   });
