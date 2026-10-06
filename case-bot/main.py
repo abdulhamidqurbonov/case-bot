@@ -12,8 +12,9 @@ from telegram import Update
 from telegram.error import NetworkError, TimedOut
 
 from app import database as dbm
-from app import prizes
+from app import catalog
 from app.api import router
+from app.images import router as images_router
 from app.bot import build_app, get_app
 from app.config import PORT, WEBAPP_URL, WEBHOOK_SECRET, missing_required
 
@@ -55,11 +56,10 @@ async def lifespan(app: FastAPI):
     if not WEBAPP_URL.startswith("https://"):
         raise RuntimeError("WEBAPP_URL https:// bilan boshlanishi kerak")
 
-    prizes.validate()
-    for s in prizes.case_stats():
-        if s["rtp_percent"] is not None:
-            logger.info("Case %-7s narx=%5d  o'rtacha qiymat=%7.1f  sotishda RTP=%5.1f%%",
-                        s["id"], s["price"], s["avg_value"], s["rtp_percent"])
+    catalog.validate()
+    for c in catalog.CASE_LIST:
+        logger.info("Case %-8s narx=%6d ⭐  o'rtacha yutuq=%8.1f  RTP=%s",
+                    c["id"], c["price"], c["avg_value"], f"{c['rtp']}%" if c["rtp"] else "bepul")
 
     await _retry("Baza", lambda: asyncio.to_thread(dbm.init_db))
 
@@ -99,6 +99,7 @@ async def telegram_webhook(request: Request):
 
 
 app.include_router(router)
+app.include_router(images_router)
 
 if os.path.isdir(IMAGES_DIR):
     app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
@@ -112,7 +113,7 @@ async def health():
 @app.get("/")
 @app.get("/{path:path}")
 async def serve_spa(path: str = ""):
-    if path.startswith(("api/", "webhook", "images/")):
+    if path.startswith(("api/", "webhook", "images/", "img/")):
         return Response(status_code=404)
     return FileResponse(INDEX_HTML)
 

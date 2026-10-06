@@ -14,12 +14,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+from app import catalog, games
 from app import database as dbm
 from app.config import (
-    ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME,
-    FREE_CASE_COOLDOWN_H, INIT_DATA_MAX_AGE_S, TASK_BONUS_STARS,
+    ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME, CONTRACT_RTP_PERCENT,
+    CRASH_RTP_PERCENT, DICE_RTP_PERCENT, FREE_CASE_COOLDOWN_H, INIT_DATA_MAX_AGE_S,
+    MAX_BET, MAX_WIN, MIN_BET, MIN_WITHDRAW_VALUE, REFERRAL_BONUS_STARS, SELL_RATE_PERCENT, TASK_BONUS_STARS,
+    UPGRADE_RTP_PERCENT, WITHDRAW_NEEDS_DEPOSIT,
 )
-from app.prizes import CASES, PACKAGES, get_case, pick_prize
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -88,12 +90,17 @@ class Body(BaseModel):
 
 
 class OpenBody(Body):
-    caseId: str = "free"
-    qty: int = Field(default=1, ge=1, le=10)
+    caseId: str
+    qty: int = Field(default=1, ge=1, le=5)
 
 
 class ItemBody(Body):
-    inventoryId: int = 0
+    inventoryId: int
+
+
+class ItemsBody(Body):
+    ids: list[int] = Field(default_factory=list, max_length=500)
+    all: bool = False
 
 
 class SteamBody(Body):
@@ -108,81 +115,183 @@ class InvoiceBody(Body):
     package: str = ""
 
 
-# ── Endpointlar ───────────────────────────────────────────────────────
+class UpgradeBody(Body):
+    inventoryId: int
+    targetKey: str
 
-@router.post("/me")
-def api_me(body: Body):
-    user = auth(body.initData)
-    u = dbm.get_me(user["id"], user.get("username"), user.get("first_name"), FREE_CASE_COOLDOWN_H)
+
+class ContractBody(Body):
+    ids: list[int] = Field(min_length=1, max_length=20)
+
+
+class CrashBody(Body):
+    bet: int
+    target: float
+
+
+class DiceBody(Body):
+    bet: int
+    chance: float
+    over: bool = False
+
+
+# ── Yordamchilar ──────────────────────────────────────────────────────
+
+_LEGACY_RARITY = {"common": "consumer", "uncommon": "milspec", "rare": "restricted",
+                  "epic": "classified", "legendary": "covert"}
+
+
+def item_out(row: dict) -> dict:
+    """Inventar qatorini frontend formatiga o'giradi."""
+    key = row.get("skin_key") or catalog.key_by_name(row.get("prize_name"))
     return {
-        "telegramId":      u["telegram_id"],
-        "username":        u.get("username"),
-        "firstName":       u.get("first_name"),
-        "starsBalance":    u["stars_balance"],
-        "premiumCases":    u.get("premium_cases") or 0,
-        "freeAvailable":   u["free_seconds_left"] == 0,
-        "freeSecondsLeft": u["free_seconds_left"],
-        "steamUrl":        u.get("steam_trade_url") or "",
+        "id": row["id"],
+        "key": key,
+        "name": row["prize_name"],
+        "value": row["prize_value"],
+        "rarity": _rarity(row["prize_rarity"]),
+        "sell": max(1, row["prize_value"] * SELL_RATE_PERCENT // 100),
     }
 
 
-@router.get("/cases")
-def api_cases():
-    return {"cases": CASES}
+def _rarity(r: str) -> str:
+    if r in catalog.RARITIES:
+        return r
+    return _LEGACY_RARITY.get(r, "consumer")
 
 
-@router.get("/packages")
-def api_packages():
-    return {"packages": [
-        {"id": key, "stars": p["stars"], "bonus": p["bonus"], "label": p["label"]}
-        for key, p in PACKAGES.items()
-    ]}
+def me_out(u: dict) -> dict:
+    return {
+        "id":              u["telegram_id"],
+        "username":        u.get("username"),
+        "firstName":       u.get("first_name"),
+        "balance":         u["stars_balance"],
+        "freeSecondsLeft": u["free_seconds_left"],
+        "steamUrl":        u.get("steam_trade_url") or "",
+        "deposits":        u.get("deposits", 0),
+    }
 
+
+def _me(user: dict) -> dict:
+    return me_out(dbm.get_me(user["id"], user.get("username"), user.get("first_name"),
+                             FREE_CASE_COOLDOWN_H))
+
+
+# ── Asosiy ma'lumotlar ────────────────────────────────────────────────
+
+@router.post("/bootstrap")
+def api_bootstrap(body: Body):
+    """WebApp ochilganda bir marta chaqiriladi — hamma kerakli ma'lumot."""
+    user = auth(body.initData)
+    completed = dbm.get_completed_tasks(user["id"])
+    tasks = []
+    if CHANNEL_USERNAME:
+        tasks.append({"id": "join_channel", "title": "Kanalga obuna bo'ling",
+                      "channel": CHANNEL_USERNAME, "reward": TASK_BONUS_STARS,
+                      "completed": "join_channel" in completed})
+    return {
+        "me": _me(user),
+        "cases": catalog.public_cases(),
+        "skins": [catalog.skin(k) for k in catalog.SKINS],
+        "rarities": catalog.RARITIES,
+        "packages": [{"id": k, **p} for k, p in catalog.PACKAGES.items()],
+        "tasks": tasks,
+        "refLink": f"https://t.me/{BOT_USERNAME}?start=ref_{user['id']}" if BOT_USERNAME else "",
+        "imgVersion": dbm.image_version(),
+        "config": {
+            "minBet": MIN_BET, "maxBet": MAX_BET, "maxWin": MAX_WIN,
+            "sellRate": SELL_RATE_PERCENT, "minWithdraw": MIN_WITHDRAW_VALUE,
+            "withdrawNeedsDeposit": bool(WITHDRAW_NEEDS_DEPOSIT),
+            "upgradeRtp": UPGRADE_RTP_PERCENT, "upgradeMaxChance": games.UPGRADE_MAX_CHANCE,
+            "contractRtp": CONTRACT_RTP_PERCENT, "contractMin": games.CONTRACT_MIN,
+            "contractMax": games.CONTRACT_MAX, "crashRtp": CRASH_RTP_PERCENT,
+            "diceRtp": DICE_RTP_PERCENT, "freeCooldownH": FREE_CASE_COOLDOWN_H,
+            "refBonus": REFERRAL_BONUS_STARS,
+        },
+    }
+
+
+@router.post("/me")
+def api_me(body: Body):
+    return _me(auth(body.initData))
+
+
+@router.get("/feed")
+def api_feed():
+    return {"feed": [{**item_out({**r, "prize_image": ""}), "who": _mask(r["who"]), "source": r["source"]}
+                     for r in dbm.get_feed()]}
+
+
+@router.get("/leaderboard")
+def api_leaderboard():
+    return {"leaderboard": [{"who": _mask(r["who"]), "total": int(r["total"]), "drops": r["drops"]}
+                            for r in dbm.get_leaderboard()]}
+
+
+def _mask(name) -> str:
+    name = str(name or "o'yinchi")
+    return name if len(name) <= 3 else name[:3] + "***"
+
+
+# ── Case'lar ──────────────────────────────────────────────────────────
 
 @router.post("/open-case")
 def api_open_case(body: OpenBody):
     user = auth(body.initData)
-    case = get_case(body.caseId)
+    case = catalog.CASE_BY_ID.get(body.caseId)
     if not case:
         raise HTTPException(status_code=400, detail="unknown_case")
     dbm.get_or_create_user(user["id"], user.get("username"), user.get("first_name"))
-    return game_call(dbm.open_case, user["id"], case, body.qty, FREE_CASE_COOLDOWN_H, pick_prize)
+    res = game_call(dbm.open_case, user["id"], case, body.qty, FREE_CASE_COOLDOWN_H, catalog.pick)
+    for r in res["results"]:
+        r["id"] = r["inventoryId"]
+        r["sell"] = max(1, r["value"] * SELL_RATE_PERCENT // 100)
+    return res
 
+
+# ── Inventar ──────────────────────────────────────────────────────────
 
 @router.post("/inventory")
 def api_inventory(body: Body):
     user = auth(body.initData)
-    return {"items": dbm.get_inventory(user["id"])}
+    return {"items": [item_out(r) for r in dbm.get_inventory(user["id"])]}
 
 
 @router.post("/sell")
-def api_sell(body: ItemBody):
+def api_sell(body: ItemsBody):
     user = auth(body.initData)
-    res = game_call(dbm.sell_item, user["id"], body.inventoryId)
-    return {**res, "message": f"+{res['reward']} Stars balansga qo'shildi"}
+    if not body.all and not body.ids:
+        raise HTTPException(status_code=400, detail="item_not_found")
+    return game_call(dbm.sell_items, user["id"], None if body.all else body.ids, SELL_RATE_PERCENT)
 
 
 @router.post("/withdraw")
 async def api_withdraw(body: ItemBody):
     user = auth(body.initData)
-    req = await run_in_threadpool(game_call, dbm.create_withdraw_request, user["id"], body.inventoryId)
+    req = await run_in_threadpool(
+        game_call, dbm.create_withdraw_request, user["id"], body.inventoryId,
+        MIN_WITHDRAW_VALUE, bool(WITHDRAW_NEEDS_DEPOSIT))
 
     if ADMIN_CHAT_ID:
         uname = ("@" + user["username"]) if user.get("username") else f"id {user['id']}"
         msg = (
-            f"📦 <b>Yangi chiqarish so'rovi #{req['id']}</b>\n\n"
-            f"👤 {uname}\n"
-            f"🔫 Skin: <b>{_esc(req['prize_name'])}</b>\n"
-            f"🔗 Trade URL:\n<code>{_esc(req['steam_trade_url'])}</code>\n\n"
-            f"Yuborgach: /confirm_{req['id']}\n"
-            f"Rad etish: /reject_{req['id']}"
+            f"📦 <b>Chiqarish so'rovi #{req['id']}</b>\n\n"
+            f"👤 {_esc(uname)}\n"
+            f"🔫 <b>{_esc(req['prize_name'])}</b> — {req['prize_value']} ⭐\n"
+            f"🔗 <code>{_esc(req['steam_trade_url'])}</code>\n\n"
+            f"Yubordim: /confirm_{req['id']}\nRad etish: /reject_{req['id']} sabab"
         )
         try:
             await _bot().send_message(ADMIN_CHAT_ID, msg, parse_mode="HTML")
         except Exception:
             logger.exception("Adminga withdraw xabari yuborilmadi")
-
     return {"success": True, "requestId": req["id"]}
+
+
+@router.post("/withdrawals")
+def api_withdrawals(body: Body):
+    user = auth(body.initData)
+    return {"items": dbm.user_withdrawals(user["id"])}
 
 
 def _valid_trade_url(url: str) -> bool:
@@ -191,12 +300,8 @@ def _valid_trade_url(url: str) -> bool:
     except ValueError:
         return False
     q = parse_qs(p.query)
-    return (
-        p.scheme == "https"
-        and p.netloc == "steamcommunity.com"
-        and p.path.rstrip("/") == "/tradeoffer/new"
-        and "partner" in q and "token" in q
-    )
+    return (p.scheme == "https" and p.netloc == "steamcommunity.com"
+            and p.path.rstrip("/") == "/tradeoffer/new" and "partner" in q and "token" in q)
 
 
 @router.post("/set-steam")
@@ -208,21 +313,58 @@ def api_set_steam(body: SteamBody):
     return {"success": True}
 
 
-@router.post("/tasks")
-def api_tasks(body: Body):
+# ── O'yinlar ──────────────────────────────────────────────────────────
+
+def _game(fn, *args):
+    res = game_call(fn, *args)
+    if res.get("item"):
+        res["item"]["id"] = res["item"]["inventoryId"]
+        res["item"]["sell"] = max(1, res["item"]["value"] * SELL_RATE_PERCENT // 100)
+    return res
+
+
+@router.post("/upgrade")
+def api_upgrade(body: UpgradeBody):
     user = auth(body.initData)
-    completed = dbm.get_completed_tasks(user["id"])
-    tasks = []
-    if CHANNEL_USERNAME:
-        tasks.append({
-            "id":        "join_channel",
-            "title":     "Kanalga obuna bo'ling",
-            "subtitle":  CHANNEL_USERNAME,
-            "reward":    TASK_BONUS_STARS,
-            "completed": "join_channel" in completed,
-            "channel":   CHANNEL_USERNAME,
-        })
-    return {"tasks": tasks}
+    return _game(games.upgrade, user["id"], body.inventoryId, body.targetKey)
+
+
+@router.post("/contract")
+def api_contract(body: ContractBody):
+    user = auth(body.initData)
+    return _game(games.contract, user["id"], body.ids)
+
+
+@router.post("/crash")
+def api_crash(body: CrashBody):
+    user = auth(body.initData)
+    return _game(games.crash, user["id"], body.bet, body.target)
+
+
+@router.post("/dice")
+def api_dice(body: DiceBody):
+    user = auth(body.initData)
+    return _game(games.dice, user["id"], body.bet, body.chance, body.over)
+
+
+@router.post("/history")
+def api_history(body: Body):
+    user = auth(body.initData)
+    return {"games": dbm.user_games(user["id"])}
+
+
+# ── Profil ────────────────────────────────────────────────────────────
+
+@router.post("/profile")
+def api_profile(body: Body):
+    user = auth(body.initData)
+    p = dbm.get_profile(user["id"])
+    return {
+        "casesOpened": p["cases_opened"], "gamesPlayed": p["games_played"],
+        "referrals": p["referrals"],
+        "best": {"key": p["best_key"] or catalog.key_by_name(p["best_name"]), "name": p["best_name"],
+                 "value": p["best_drop"]} if p["best_name"] else None,
+    }
 
 
 @router.post("/tasks/check")
@@ -230,58 +372,33 @@ async def api_task_check(body: TaskBody):
     user = auth(body.initData)
     if body.taskId != "join_channel" or not CHANNEL_USERNAME:
         raise HTTPException(status_code=400, detail="unknown_task")
-
     try:
         member = await _bot().get_chat_member(CHANNEL_USERNAME, user["id"])
     except Exception:
-        logger.exception("Obunani tekshirib bo'lmadi (bot kanalda admin ekanini tekshiring)")
+        logger.exception("Obunani tekshirib bo'lmadi (bot kanalda admin bo'lishi kerak)")
         raise HTTPException(status_code=500, detail="check_failed")
     if member.status not in ("member", "administrator", "creator"):
         raise HTTPException(status_code=400, detail="not_member")
-
     balance = await run_in_threadpool(
         game_call, dbm.complete_task, user["id"], "join_channel", TASK_BONUS_STARS)
     return {"success": True, "reward": TASK_BONUS_STARS, "balance": balance}
 
 
-@router.get("/leaderboard")
-def api_leaderboard():
-    return {"leaderboard": dbm.get_leaderboard()}
-
-
-@router.post("/profile")
-def api_profile(body: Body):
-    user = auth(body.initData)
-    p = dbm.get_profile(user["id"], user.get("username"), user.get("first_name"))
-    return {
-        "username":     p.get("username"),
-        "firstName":    p.get("first_name"),
-        "starsBalance": p["stars_balance"],
-        "premiumCases": p.get("premium_cases") or 0,
-        "wins":         p["wins"],
-        "totalValue":   p["total_value"],
-        "referrals":    p["referrals"],
-        "daysWithUs":   p["days"],
-        "steamUrl":     p.get("steam_trade_url") or "",
-    }
-
-
 @router.post("/create-invoice")
 async def api_create_invoice(body: InvoiceBody):
     user = auth(body.initData)
-    pkg = PACKAGES.get(body.package)
+    pkg = catalog.PACKAGES.get(body.package)
     if not pkg:
         raise HTTPException(status_code=400, detail="unknown_package")
-
     total = pkg["stars"] + pkg["bonus"]
     try:
         link = await _bot().create_invoice_link(
-            title=pkg["label"],
+            title=f"{total} Stars balans",
             description=f"Balansingizga {total} Stars qo'shiladi",
             payload=json.dumps({"u": user["id"], "p": body.package}),
             provider_token="",
             currency="XTR",
-            prices=[{"label": pkg["label"], "amount": pkg["stars"]}],
+            prices=[{"label": f"{pkg['stars']} Stars", "amount": pkg["stars"]}],
         )
     except Exception:
         logger.exception("Invoice yaratilmadi")
@@ -289,12 +406,5 @@ async def api_create_invoice(body: InvoiceBody):
     return {"invoiceLink": link}
 
 
-@router.post("/referral")
-def api_referral(body: Body):
-    user = auth(body.initData)
-    link = f"https://t.me/{BOT_USERNAME}?start=ref_{user['id']}" if BOT_USERNAME else ""
-    return {"link": link, "referralCount": dbm.referral_count(user["id"])}
-
-
 def _esc(text) -> str:
-    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

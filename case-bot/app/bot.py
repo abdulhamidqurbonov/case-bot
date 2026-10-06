@@ -12,7 +12,7 @@ from telegram.ext import (
 
 from app import database as dbm
 from app.config import ADMIN_CHAT_ID, BOT_TOKEN, REFERRAL_BONUS_STARS, WEBAPP_URL
-from app.prizes import PACKAGES
+from app.catalog import CASE_LIST, PACKAGES, SKINS, key_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     name = _esc(user.first_name or "do'stim")
     await update.message.reply_text(
-        f"<b>CS2 Cases</b> ga xush kelibsiz, {name}!\n\n"
-        "Case oching va skinlar yutib oling.\n"
+        f"Salom, {name}! 🔥\n\n"
+        "Case oching, Upgrade, Crash va boshqa o'yinlarda skin yutib oling.\n"
         "Har kuni bitta bepul case sizni kutadi 🎁",
         reply_markup=_play_kb(),
         parse_mode="HTML",
@@ -77,7 +77,7 @@ async def cmd_me(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_setsteam(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    from app.api import _valid_trade_url
+    from app.api import _valid_trade_url  # noqa: E402
 
     if not ctx.args:
         await update.message.reply_text(
@@ -190,6 +190,93 @@ async def on_error(update: object, ctx: ContextTypes.DEFAULT_TYPE):
     logger.error("Bot xatosi", exc_info=ctx.error)
 
 
+# ── Skin rasmlari (admin) ─────────────────────────────────────────────
+
+_IMAGE_KEYS = set(SKINS) | {"case_" + c["id"] for c in CASE_LIST}
+_MAX_IMAGE_BYTES = 3 * 1024 * 1024
+
+
+def _resolve_image_key(text: str) -> str | None:
+    t = (text or "").strip()
+    if t.lower() in _IMAGE_KEYS:
+        return t.lower()
+    return key_by_name(t)
+
+
+async def on_admin_image(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Admin rasm yuboradi, izohiga skin kaliti yoki nomini yozadi."""
+    if not _is_admin(update):
+        return
+    msg = update.message
+    key = _resolve_image_key(msg.caption or "")
+    if not key:
+        await msg.reply_text(
+            "Rasm izohiga skin kalitini yozing, masalan: <code>awp_asi</code>\n"
+            "Ro'yxat: /skins", parse_mode="HTML")
+        return
+
+    if msg.photo:
+        file_obj, mime = msg.photo[-1], "image/jpeg"
+    elif msg.document and (msg.document.mime_type or "").startswith("image/"):
+        file_obj, mime = msg.document, msg.document.mime_type
+    else:
+        return
+    if file_obj.file_size and file_obj.file_size > _MAX_IMAGE_BYTES:
+        await msg.reply_text("Rasm 3 MB dan katta. Kichikroq rasm yuboring.")
+        return
+
+    tg_file = await file_obj.get_file()
+    data = bytes(await tg_file.download_as_bytearray())
+    await asyncio.to_thread(dbm.save_skin_image, key, data, mime)
+    from app.images import forget
+    forget(key)
+    name = SKINS[key][0] if key in SKINS else key
+    await msg.reply_text(f"✅ Rasm saqlandi: <b>{_esc(name)}</b> (<code>{key}</code>)", parse_mode="HTML")
+
+
+async def cmd_skins(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    have = await asyncio.to_thread(dbm.image_keys)
+    lines = ["<b>Skinlar</b> (✅ rasm bor, ▫️ yo'q)\n"]
+    for k, (name, _, value) in SKINS.items():
+        lines.append(f"{'✅' if k in have else '▫️'} <code>{k}</code> — {_esc(name)} · {value}⭐")
+    lines.append("\n<b>Case rasmlari</b>")
+    for c in CASE_LIST:
+        k = "case_" + c["id"]
+        lines.append(f"{'✅' if k in have else '▫️'} <code>{k}</code> — {_esc(c['name'])}")
+    lines.append("\nRasm yuborib, izohiga kalitni yozing. PNG (fonsiz) uchun — fayl sifatida yuboring.\n"
+                 "O'chirish: <code>/delimg kalit</code>")
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+
+async def cmd_delimg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    key = _resolve_image_key(" ".join(ctx.args or []))
+    if not key:
+        await update.message.reply_text("Format: /delimg awp_asi")
+        return
+    ok = await asyncio.to_thread(dbm.delete_skin_image, key)
+    from app.images import forget
+    forget(key)
+    await update.message.reply_text("🗑 O'chirildi" if ok else "Bu kalit uchun rasm yo'q")
+
+
+async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    await update.message.reply_text(
+        "<b>Admin buyruqlari</b>\n\n"
+        "/pending — Steam so'rovlari\n"
+        "/confirm_ID — yuborildi\n"
+        "/reject_ID sabab — rad etish (skin qaytadi)\n"
+        "/skins — rasmlar ro'yxati\n"
+        "Rasm + izohda kalit — rasm yuklash\n"
+        "/delimg kalit — rasmni o'chirish",
+        parse_mode="HTML")
+
+
 # ── Ilova ─────────────────────────────────────────────────────────────
 
 def build_app() -> Application:
@@ -208,6 +295,11 @@ def build_app() -> Application:
     application.add_handler(CommandHandler("me", cmd_me))
     application.add_handler(CommandHandler("setsteam", cmd_setsteam))
     application.add_handler(CommandHandler("pending", cmd_pending))
+    application.add_handler(CommandHandler("skins", cmd_skins))
+    application.add_handler(CommandHandler("delimg", cmd_delimg))
+    application.add_handler(CommandHandler("admin", cmd_admin_help))
+    application.add_handler(MessageHandler(
+        filters.ChatType.PRIVATE & (filters.PHOTO | filters.Document.IMAGE), on_admin_image))
     application.add_handler(MessageHandler(filters.Regex(_ADMIN_RE), cmd_admin_action))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))

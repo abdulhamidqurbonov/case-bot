@@ -27,10 +27,25 @@ CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "").strip()
 PORT             = _int("PORT", 8000)
 
 FREE_CASE_COOLDOWN_H = _int("FREE_CASE_COOLDOWN_HOURS", 24)
-REFERRAL_BONUS_STARS = _int("REFERRAL_BONUS_STARS", 25)    # taklif qilgan odamga
-TASK_BONUS_STARS     = _int("TASK_BONUS_STARS", 25)        # kanalga obuna uchun
-SELL_RATE_PERCENT    = _int("SELL_RATE_PERCENT", 10)       # skin qiymatining necha % i qaytadi
+REFERRAL_BONUS_STARS = _int("REFERRAL_BONUS_STARS", 10)    # taklif qilgan odamga
+TASK_BONUS_STARS     = _int("TASK_BONUS_STARS", 10)        # kanalga obuna uchun
+SELL_RATE_PERCENT    = _int("SELL_RATE_PERCENT", 100)      # skin qiymatining necha % i qaytadi
 INIT_DATA_MAX_AGE_S  = _int("INIT_DATA_MAX_AGE_SECONDS", 86400)
+
+# Iqtisod: o'yinchiga o'rtacha qaytadigan foiz (RTP). Qolgani — sizning daromadingiz.
+CASE_RTP_PERCENT     = _int("CASE_RTP_PERCENT", 90)
+UPGRADE_RTP_PERCENT  = _int("UPGRADE_RTP_PERCENT", 90)
+CONTRACT_RTP_PERCENT = _int("CONTRACT_RTP_PERCENT", 90)
+CRASH_RTP_PERCENT    = _int("CRASH_RTP_PERCENT", 95)
+DICE_RTP_PERCENT     = _int("DICE_RTP_PERCENT", 95)
+
+MIN_BET   = _int("MIN_BET", 5)
+MAX_BET   = _int("MAX_BET", 50000)
+MAX_WIN   = _int("MAX_WIN", 500000)          # bitta o'yindagi eng katta yutuq
+
+# Steam'ga chiqarish qoidalari (aldovdan himoya)
+MIN_WITHDRAW_VALUE    = _int("MIN_WITHDRAW_VALUE", 100)   # bundan arzon skin chiqarilmaydi
+WITHDRAW_NEEDS_DEPOSIT = _int("WITHDRAW_NEEDS_DEPOSIT", 1) # 1 = kamida bitta to'lov qilgan bo'lishi kerak
 
 # Webhook maxfiy kaliti. Berilmasa, tokendan avtomatik yasaladi
 # (tokenning o'zi hech qayerda ochiq ko'rinmaydi).

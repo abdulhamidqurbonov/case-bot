@@ -1,6 +1,5 @@
 -- CS2 Cases Bot — baza sxemasi
--- Eslatma: server ishga tushganda bu jadvallarni O'ZI yaratadi (init_db).
--- Bu faylni Supabase SQL Editor'da qo'lda ishga tushirish shart emas.
+-- Server ishga tushganda bu jadvallarni O'ZI yaratadi. Qo'lda ishga tushirish shart emas.
 
 CREATE TABLE IF NOT EXISTS users (
     telegram_id        BIGINT PRIMARY KEY,
@@ -77,19 +76,40 @@ CREATE TABLE IF NOT EXISTS balance_log (
     ref          TEXT,
     created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS games (
+    id           BIGSERIAL PRIMARY KEY,
+    telegram_id  BIGINT NOT NULL REFERENCES users(telegram_id),
+    game         TEXT NOT NULL,
+    bet          INTEGER NOT NULL,
+    payout       INTEGER NOT NULL,
+    win          BOOLEAN NOT NULL,
+    details      JSONB,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS skin_images (
+    key          TEXT PRIMARY KEY,
+    data         BYTEA NOT NULL,
+    mime         TEXT NOT NULL,
+    updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Eski bazalar uchun migratsiyalar (qayta ishga tushirilsa ham xavfsiz)
+-- Migratsiyalar (qayta ishga tushirilsa ham xavfsiz)
 ALTER TABLE payments  ADD COLUMN IF NOT EXISTS credited_stars INTEGER DEFAULT 0;
 ALTER TABLE payments  ADD COLUMN IF NOT EXISTS package TEXT;
 ALTER TABLE payments  ALTER COLUMN cases_granted SET DEFAULT 0;
 ALTER TABLE payments  ALTER COLUMN cases_granted DROP NOT NULL;
 ALTER TABLE tasks_completed ADD COLUMN IF NOT EXISTS reward_stars INTEGER DEFAULT 0;
 ALTER TABLE referrals ADD COLUMN IF NOT EXISTS reward_given BOOLEAN DEFAULT FALSE;
+ALTER TABLE inventory ADD COLUMN IF NOT EXISTS skin_key TEXT;
+ALTER TABLE inventory ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'case';
+ALTER TABLE case_openings ADD COLUMN IF NOT EXISTS skin_key TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referrals_referred ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_openings_user   ON case_openings(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_user  ON inventory(telegram_id, status);
+CREATE INDEX IF NOT EXISTS idx_inventory_time  ON inventory(obtained_at DESC);
 CREATE INDEX IF NOT EXISTS idx_withdraw_status ON withdraw_requests(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_user      ON tasks_completed(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_referrer        ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_balance_log     ON balance_log(telegram_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_games_user      ON games(telegram_id, created_at DESC);
