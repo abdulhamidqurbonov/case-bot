@@ -1,27 +1,28 @@
-"""Skin va case rasmlari: avval bazadan (bot orqali yuklangan), keyin public/images dan."""
+"""/img/<kalit> — rasm va ovozlar: avval bazadan (bot orqali yuklangan), keyin public/images dan."""
 import os
 import re
 import threading
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from app import database as dbm
+from app.media import STATIC_DIR, STATIC_EXT
 
 router = APIRouter()
 
-_BASE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "images")
-_EXT_MIME = {".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-             ".svg": "image/svg+xml"}
 _KEY_RE = re.compile(r"^[a-z0-9_]{1,64}$")
 _cache: dict[str, tuple[bytes, str] | None] = {}
 _lock = threading.Lock()
-_MAX_CACHE = 300
+_MAX_CACHE = 400
 
 
-def forget(key: str) -> None:
+def forget(key: str | None = None) -> None:
     with _lock:
-        _cache.pop(key, None)
+        if key is None:
+            _cache.clear()
+        else:
+            _cache.pop(key, None)
 
 
 def _load(key: str) -> tuple[bytes, str] | None:
@@ -30,8 +31,8 @@ def _load(key: str) -> tuple[bytes, str] | None:
             return _cache[key]
     found = dbm.get_skin_image(key)
     if not found:
-        for ext, mime in _EXT_MIME.items():
-            path = os.path.join(_BASE, key + ext)
+        for ext, mime in STATIC_EXT.items():
+            path = os.path.join(STATIC_DIR, key + ext)
             if os.path.isfile(path):
                 with open(path, "rb") as f:
                     found = (f.read(), mime)
@@ -44,7 +45,7 @@ def _load(key: str) -> tuple[bytes, str] | None:
 
 
 @router.get("/img/{key}")
-async def get_image(key: str):
+async def get_media(key: str, request: Request):
     key = key.lower()
     if not _KEY_RE.match(key):
         return Response(status_code=404)
@@ -52,5 +53,6 @@ async def get_image(key: str):
     if not found:
         return Response(status_code=404, headers={"Cache-Control": "public, max-age=60"})
     data, mime = found
-    return Response(content=data, media_type=mime,
-                    headers={"Cache-Control": "public, max-age=86400"})
+    # ?v=<versiya> bilan so'ralsa — o'zgarmaydi, telefon uni uzoq saqlaydi (qayta yuklamaydi)
+    cache = "public, max-age=31536000, immutable" if request.query_params.get("v") else "public, max-age=3600"
+    return Response(content=data, media_type=mime, headers={"Cache-Control": cache})

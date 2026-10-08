@@ -8,13 +8,13 @@ import hmac
 import json
 import logging
 import time
-from urllib.parse import parse_qsl, urlparse, parse_qs
+from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from app import catalog, games
+from app import catalog, games, media, steam
 from app import database as dbm
 from app.config import (
     ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME, CONTRACT_RTP_PERCENT,
@@ -168,6 +168,7 @@ def me_out(u: dict) -> dict:
         "balance":         u["stars_balance"],
         "freeSecondsLeft": u["free_seconds_left"],
         "steamUrl":        u.get("steam_trade_url") or "",
+        "steam":           steam_out(u),
         "deposits":        u.get("deposits", 0),
     }
 
@@ -198,6 +199,7 @@ def api_bootstrap(body: Body):
         "tasks": tasks,
         "refLink": f"https://t.me/{BOT_USERNAME}?start=ref_{user['id']}" if BOT_USERNAME else "",
         "imgVersion": dbm.image_version(),
+        "media": sorted((dbm.image_keys() | media.static_keys()) & media.ALL_KEYS),
         "config": {
             "minBet": MIN_BET, "maxBet": MAX_BET, "maxWin": MAX_WIN,
             "sellRate": SELL_RATE_PERCENT, "minWithdraw": MIN_WITHDRAW_VALUE,
@@ -296,21 +298,34 @@ def api_withdrawals(body: Body):
 
 def _valid_trade_url(url: str) -> bool:
     try:
-        p = urlparse(url.strip())
-    except ValueError:
+        steam.parse_trade_url(url)
+        return True
+    except steam.SteamError:
         return False
-    q = parse_qs(p.query)
-    return (p.scheme == "https" and p.netloc == "steamcommunity.com"
-            and p.path.rstrip("/") == "/tradeoffer/new" and "partner" in q and "token" in q)
 
 
 @router.post("/set-steam")
-def api_set_steam(body: SteamBody):
+async def api_set_steam(body: SteamBody):
+    """Trade URL ni tekshiradi, Steam profilini topadi va saqlaydi."""
     user = auth(body.initData)
-    if len(body.url) > 300 or not _valid_trade_url(body.url):
-        raise HTTPException(status_code=400, detail="invalid_url")
-    dbm.set_steam_url(user["id"], body.url.strip())
-    return {"success": True}
+    try:
+        clean, partner, _ = steam.parse_trade_url(body.url)
+        id64 = steam.to_id64(partner)
+        prof = await steam.fetch_profile(id64)
+    except steam.SteamError as e:
+        raise HTTPException(status_code=400, detail=e.code)
+    saved = await run_in_threadpool(
+        dbm.set_steam_url, user["id"], clean, id64,
+        (prof or {}).get("name"), (prof or {}).get("avatar"))
+    return {"success": True, "steam": steam_out(saved), "verified": prof is not None}
+
+
+def steam_out(u: dict) -> dict | None:
+    if not u.get("steam_trade_url"):
+        return None
+    return {"url": u["steam_trade_url"], "id64": u.get("steam_id64"), "name": u.get("steam_name"),
+            "avatar": u.get("steam_avatar"),
+            "profile": f"https://steamcommunity.com/profiles/{u['steam_id64']}" if u.get("steam_id64") else None}
 
 
 # ── O'yinlar ──────────────────────────────────────────────────────────

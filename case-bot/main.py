@@ -73,6 +73,8 @@ async def lifespan(app: FastAPI):
     ))
     await ptb.start()
     logger.info("✅ Bot ishga tushdi: @%s", ptb.bot.username)
+    from app.config import ADMIN_CHAT_ID
+    logger.info("Admin ID: %s", ADMIN_CHAT_ID or "SOZLANMAGAN (rasm yuklash ishlamaydi)")
 
     try:
         yield

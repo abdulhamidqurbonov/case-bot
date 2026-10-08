@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CS2 Cases</title>
+<title>CaseVault</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +29,7 @@ img{display:block;max-width:100%}
 .mut{color:var(--mut)} .hide{display:none!important}
 
 /* ── header ── */
-.top{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--bg) 70%,rgba(18,7,10,0));padding:10px 14px 6px;display:flex;align-items:center;gap:10px}
+.top{position:sticky;top:0;z-index:30;background:var(--bg);box-shadow:0 1px 0 var(--line);padding:10px 14px 8px;display:flex;align-items:center;gap:10px}
 .brand{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.02em;display:flex;align-items:center;gap:7px}
 .brand i{width:10px;height:22px;background:var(--red);transform:skewX(-14deg);box-shadow:0 0 14px var(--redglow)}
 .bal{margin-left:auto;display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 3px 3px 12px;gap:8px}
@@ -58,20 +58,27 @@ img{display:block;max-width:100%}
 .cases{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .case{background:var(--card);border-radius:var(--r);padding:12px 10px 10px;text-align:center;position:relative;overflow:hidden;border:1px solid transparent}
 .case:active{border-color:var(--red)}
-.case .ci{height:96px;display:flex;align-items:center;justify-content:center}
-.case .ci img,.case .ci svg{max-height:96px}
+.case .ci{height:118px;margin:-4px -2px 0;display:flex;align-items:center;justify-content:center}
+.case .ci svg{max-height:96px}
+/* Rasm har qanday o'lchamda bo'lsa ham kartani to'ldiradi, chetlari fonga silliq o'tadi */
+.case .ci img,.cv-top .ci img{width:100%;height:100%;object-fit:cover;object-position:center;border-radius:10px;
+  -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,#000 58%,transparent 100%);
+  mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,#000 58%,transparent 100%)}
 .case .nm{font-family:var(--disp);font-size:18px;margin-top:6px}
 .case .pr{display:inline-block;margin-top:6px;background:var(--red);border-radius:6px;padding:2px 10px;font-family:var(--disp);font-size:16px}
 .case .pr.free{background:var(--green);color:#06210f}
 .case .pr.wait{background:var(--card2);color:var(--mut)}
-.case .bd{position:absolute;top:8px;left:8px;font-size:11px;font-weight:600;color:var(--gold)}
+.case .bd{position:absolute;top:8px;left:8px;z-index:2;font-size:11px;font-weight:600;color:var(--gold);background:rgba(18,7,10,.78);padding:2px 7px;border-radius:5px}
 .case.hero{grid-column:1/-1;display:flex;align-items:center;text-align:left;gap:12px;background:linear-gradient(110deg,#3a0d13,var(--card) 60%)}
-.case.hero .ci{flex:0 0 110px}
+.case.hero{padding:10px 12px 10px 10px}
+.case.hero .ci{flex:0 0 128px;height:128px;margin:0}
 
 /* ── tiles (skins) ── */
 .tile{background:var(--card);border-radius:var(--r-sm);padding:8px 6px 9px;position:relative;overflow:hidden;text-align:center}
 .tile .im{height:62px;display:flex;align-items:center;justify-content:center}
-.tile .im img,.tile .im svg{max-height:62px;max-width:100%;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.tile .im img{width:100%;height:100%;object-fit:contain}
+.tile .im svg{max-height:62px;max-width:100%}
+#invGrid .tile,#ctGrid .tile,#cvItems .tile{content-visibility:auto;contain-intrinsic-size:auto 132px}
 .tile .wp{font-size:11px;color:var(--mut);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .sk{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .vl{font-family:var(--disp);font-size:15px;margin-top:2px}
@@ -86,7 +93,7 @@ img{display:block;max-width:100%}
 
 /* ── case page / reel ── */
 .cv-top{display:flex;align-items:center;gap:12px}
-.cv-top .ci{width:90px;height:76px;display:flex;align-items:center;justify-content:center}
+.cv-top .ci{flex:0 0 96px;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .reels{margin:14px -14px 8px;display:flex;flex-direction:column;gap:6px}
 .reel{position:relative;height:var(--rh,126px);overflow:hidden;background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .reel .strip{display:flex;gap:6px;height:100%;padding:6px 0;will-change:transform}
@@ -127,6 +134,17 @@ img{display:block;max-width:100%}
 .gm .t{font-family:var(--disp);font-size:21px}
 .gm .d{color:var(--mut);font-size:13.5px}
 .gm .rtp{position:absolute;right:12px;top:10px;font-size:11px;color:var(--dim)}
+.gm>div:not(.art){position:relative;z-index:1}
+.gm.has-art{min-height:108px;padding-right:42%}
+.gm.has-art .ic{display:none}
+.gm .art{position:absolute;right:0;top:0;bottom:0;width:58%;pointer-events:none}
+.gm .art img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to left,#000 45%,transparent);mask-image:linear-gradient(to left,#000 45%,transparent)}
+.gbanner{height:132px;margin:0 -14px 4px;position:relative;overflow:hidden}
+.gbanner img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent)}
+/* Bo'limga o'tish — yengil, GPU'da */
+.screen.on{animation:scIn .2s cubic-bezier(.2,.8,.2,1)}
+@keyframes scIn{from{opacity:0;transform:translate3d(0,6px,0)}}
+.reel .strip{transform:translate3d(0,0,0)}
 
 /* ── upgrade ── */
 .up-slots{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
@@ -186,8 +204,48 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 .badge{font-size:11.5px;padding:2px 8px;border-radius:5px;background:var(--card2);color:var(--mut)}
 .badge.ok{color:var(--win)} .badge.no{color:var(--lose)}
 
+.st-row{display:flex;align-items:center;gap:8px}
+.st-row input{flex:1;min-width:0}
+.st-paste{flex:0 0 auto;height:34px;padding:0 12px;border-radius:8px;background:var(--card2);font-weight:600;font-size:13.5px;color:var(--text)}
+.field{transition:border-color .2s}
+.field.ok{border-color:#2f8f5b}.field.bad{border-color:#a3262c}
+.st-msg{font-size:13px;min-height:18px;margin:6px 2px 0;color:var(--mut)}
+.st-msg.ok{color:var(--win)}.st-msg.bad{color:var(--lose)}
+.st-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid #2f8f5b;border-radius:var(--r);padding:10px 12px;margin-top:8px}
+.st-card img,.st-card .st-av{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--card2);display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:20px}
+.st-card b{display:block;font-size:15px}.st-card small{color:var(--mut);font-size:12px}
+.st-card button{margin-left:auto;color:var(--mut);font-size:13px;font-weight:600;padding:6px 0}
+.chev{display:inline-block;transition:transform .35s cubic-bezier(.2,.8,.2,1);margin-left:2px}
+[aria-expanded="true"] .chev{transform:rotate(180deg)}
+/* Qo'llanma: balandligi silliq ochiladi */
+.guide{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1)}
+.guide.open{grid-template-rows:1fr}
+.guide>div{overflow:hidden;min-height:0}
+.g-in{margin-top:10px;background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 14px}
+.g-in h3{font-family:var(--disp);font-size:20px;margin-bottom:2px}
+.g-in>p{color:var(--mut);font-size:13.5px;margin-bottom:12px}
+.gstep{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line);opacity:0;transform:translate3d(0,8px,0)}
+.guide.open .gstep{animation:gIn .4s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i) * 70ms + 120ms)}
+@keyframes gIn{to{opacity:1;transform:none}}
+.gstep>div:last-child{flex:1;min-width:0}
+.guide{scroll-margin-top:64px}
+#steamHelp{font-size:16px;white-space:nowrap;gap:4px}
+.gstep .n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--red);font-family:var(--disp);font-size:16px;display:flex;align-items:center;justify-content:center}
+.gstep b{display:block;font-size:14.5px;margin-bottom:2px}
+.gstep span{color:var(--mut);font-size:13.5px}
+.mock{margin-top:8px;background:#0f1218;border:1px solid #2a3140;border-radius:8px;padding:10px;font-size:12px;color:#9aa4b5}
+.mock .lbl{color:#c7d0de;font-weight:600;margin-bottom:6px}
+.mock .row{display:flex;gap:6px;align-items:center}
+.mock .url{flex:1;min-width:0;background:#1b2130;border-radius:4px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,monospace;font-size:11px}
+.mock .cp{background:#3b6fd8;color:#fff;border-radius:4px;padding:6px 10px;font-weight:600;box-shadow:0 0 0 3px rgba(227,36,43,.6);animation:hl 1.6s ease-in-out infinite}
+@keyframes hl{50%{box-shadow:0 0 0 6px rgba(227,36,43,.15)}}
+.g-note{margin-top:12px;background:rgba(240,180,60,.08);border:1px solid rgba(240,180,60,.25);border-radius:10px;padding:10px 12px;font-size:13px;color:#e9d3a4}
+.g-note b{color:var(--gold)}
+.g-open{margin-top:14px}
+.g-sub{text-align:center;color:var(--dim);font-size:12.5px;margin-top:8px}
+
 /* ── nav ── */
-.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:rgba(26,10,15,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:#1a0a0f;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:var(--dim);font-size:11.5px;font-weight:600;position:relative}
 .nav svg{width:24px;height:24px}
 .nav button.on{color:var(--text)}
@@ -211,18 +269,75 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 .res-title.w{color:var(--win)} .res-title.l{color:var(--lose)}
 .toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));z-index:80;transform:translate(-50%,-80px);background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:var(--r);font-weight:600;font-size:14px;max-width:90vw;transition:transform .25s;text-align:center}
 .toast.on{transform:translate(-50%,0)}
-.gate{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:10px}
-.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--red);border-radius:50%;animation:sp 0.8s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
+/* ── CaseVault loader ── */
+.gate{position:fixed;inset:0;z-index:90;background:radial-gradient(120% 70% at 50% 42%,#2a0a10 0,#12070a 55%,#080305 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 20px;overflow:hidden;transition:opacity .6s ease .35s}
+.gate::before{content:"";position:absolute;inset:-50%;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px);pointer-events:none}
+.gate::after{content:"";position:absolute;left:50%;top:42%;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;background:radial-gradient(circle,rgba(227,36,43,.22),transparent 62%);animation:glow 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes glow{50%{transform:scale(1.12);opacity:.65}}
+.gate.out{opacity:0;pointer-events:none}
+.vault{position:relative;width:min(68vw,260px);aspect-ratio:1;z-index:1;perspective:900px}
+.vault svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.v-ring{transform:rotate(-90deg);transform-origin:50% 50%}
+.v-door{transform-origin:50% 50%;transition:transform .9s cubic-bezier(.6,.05,.3,1)}
+.v-dial{transform-origin:130px 130px;transform-box:view-box}
+.v-bolt{transition:transform .35s cubic-bezier(.5,0,.2,1)}
+.gate.unlock .v-bolt{transform:translate(var(--bx),var(--by))}
+.gate.open .v-door{transform:rotateY(-78deg) translateX(-8%)}
+.v-light{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(circle,#fff 0,#ff8a8e 25%,rgba(227,36,43,.5) 50%,transparent 72%);opacity:0;transform:scale(.4);transition:opacity .5s,transform .9s cubic-bezier(.2,.8,.2,1)}
+.gate.open .v-light{opacity:1;transform:scale(2.6)}
+.g-name{position:relative;z-index:1;font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:.32em;margin:26px 0 0 .32em;background:linear-gradient(180deg,#fff 30%,#ff9da0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.g-name span{color:var(--red2);-webkit-text-fill-color:var(--red2)}
+.g-stat{position:relative;z-index:1;margin-top:10px;font-size:13.5px;color:var(--mut);min-height:20px;display:flex;align-items:center;gap:10px}
+.g-stat b{font-family:var(--disp);font-size:16px;color:var(--text);min-width:42px;text-align:right}
+.g-tap{position:relative;z-index:1;margin-top:22px;height:48px;padding:0 30px;border-radius:999px;background:var(--red);font-family:var(--disp);font-size:20px;font-weight:700;letter-spacing:.06em;box-shadow:0 0 0 0 var(--redglow);animation:pulse 1.6s infinite;display:none}
+.gate.ready .g-tap{display:block}
+@keyframes pulse{70%{box-shadow:0 0 0 18px rgba(227,36,43,0)}100%{box-shadow:0 0 0 0 rgba(227,36,43,0)}}
+.g-msg{position:relative;z-index:1;margin-top:18px;color:var(--mut);font-size:14px;max-width:300px}
+.g-msg .btn{margin-top:14px}
+.snd{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--mut)}
+.snd svg{width:18px;height:18px}
+.g-snd{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;z-index:2}
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
 </style>
 </head>
 <body>
-<div class="gate" id="gate"><div class="spin"></div><div class="mut">Yuklanmoqda…</div></div>
+<div class="gate" id="gate" role="status" aria-live="polite">
+  <button class="snd g-snd" data-snd aria-label="Ovoz"></button>
+  <div class="vault">
+    <div class="v-light"></div>
+    <svg viewBox="0 0 260 260" aria-hidden="true">
+      <defs>
+        <radialGradient id="vgDoor" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="#3a1820"/><stop offset=".7" stop-color="#1d0b10"/><stop offset="1" stop-color="#12070a"/></radialGradient>
+        <linearGradient id="vgMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb0b3"/><stop offset=".45" stop-color="#e3242b"/><stop offset="1" stop-color="#6d0f14"/></linearGradient>
+      </defs>
+      <circle cx="130" cy="130" r="126" fill="none" stroke="#2c141c" stroke-width="5"/>
+      <circle class="v-ring" id="vRing" cx="130" cy="130" r="126" fill="none" stroke="url(#vgMetal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 792"/>
+      <g class="v-door">
+        <circle cx="130" cy="130" r="112" fill="url(#vgDoor)" stroke="#3b1b24" stroke-width="2"/>
+        <circle cx="130" cy="130" r="98" fill="none" stroke="#e3242b" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 7"/>
+        <g id="vBolts"></g>
+        <g class="v-dial" id="vDial">
+          <circle cx="130" cy="130" r="58" fill="#1a0a0f" stroke="url(#vgMetal)" stroke-width="4"/>
+          <g id="vTicks"></g>
+          <g stroke="url(#vgMetal)" stroke-width="9" stroke-linecap="round">
+            <line x1="130" y1="86" x2="130" y2="174"/><line x1="86" y1="130" x2="174" y2="130"/>
+            <line x1="99" y1="99" x2="161" y2="161"/><line x1="161" y1="99" x2="99" y2="161"/>
+          </g>
+          <circle cx="130" cy="130" r="20" fill="#e3242b"/><circle cx="130" cy="130" r="9" fill="#12070a"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="g-name">CASE<span>VAULT</span></div>
+  <div class="g-stat"><span id="gTxt">Seyf qulfi tekshirilmoqda</span><b id="gPct">0%</b></div>
+  <button class="g-tap" id="gTap">Seyfni ochish</button>
+  <div class="g-msg" id="gMsg"></div>
+</div>
 
 <header class="top">
-  <div class="brand"><i></i>CS2 CASES</div>
-  <div class="bal" id="balBtn" role="button" aria-label="Balansni to'ldirish">
+  <div class="brand"><i></i>CASEVAULT</div>
+  <button class="snd" data-snd aria-label="Ovoz" style="margin-left:auto"></button>
+  <div class="bal" style="margin-left:0" id="balBtn" role="button" aria-label="Balansni to'ldirish">
     <span>⭐</span><b id="bal">0</b><span class="plus">+</span>
   </div>
 </header>
@@ -347,8 +462,26 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
   <div id="pfBest"></div>
 
   <div class="h2">Steam Trade URL</div>
-  <div class="field"><label>Skinlar shu manzilga yuboriladi</label><input type="text" id="steamUrl" placeholder="https://steamcommunity.com/tradeoffer/new/?partner=…"></div>
-  <div class="btns" style="margin-top:8px"><button class="btn sm" id="steamSave">Saqlash</button><button class="btn sm ghost" id="steamHelp">Qayerda topaman?</button></div>
+  <div class="field" id="stField"><label>Skinlar shu manzilga yuboriladi</label>
+    <div class="st-row"><input type="text" id="steamUrl" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://steamcommunity.com/tradeoffer/new/?partner=…">
+    <button class="st-paste" id="steamPaste">Qo'yish</button></div></div>
+  <div class="st-msg" id="stMsg"></div>
+  <div id="stCard"></div>
+  <div class="btns" style="margin-top:8px"><button class="btn sm" id="steamSave">Saqlash</button>
+    <button class="btn sm ghost" id="steamHelp" aria-expanded="false" aria-controls="guide">Qayerdan topaman? <span class="chev">⌄</span></button></div>
+  <div class="guide" id="guide"><div><div class="g-in">
+    <h3>Trade URL ni olish</h3>
+    <p>Bir daqiqalik ish. Shu havola orqali yutgan skinlaringiz Steam akkauntingizga yuboriladi.</p>
+    <div class="gstep" style="--i:0"><div class="n">1</div><div><b>Steam'ni oching</b><span>Pastdagi «Steam'ni ochish» tugmasini bosing. Kerakli sahifa darhol ochiladi: telefonda Steam ilovasi bo'lsa — ilovada, bo'lmasa — brauzerda.</span></div></div>
+    <div class="gstep" style="--i:1"><div class="n">2</div><div><b>Akkauntingizga kiring</b><span>Login va parolni kiriting, Steam Guard kodini tasdiqlang. Kirgandan keyin o'sha sahifaga qaytasiz.</span></div></div>
+    <div class="gstep" style="--i:2"><div class="n">3</div><div><b>«Trade URL» qatorini toping</b><span>Sahifadagi «Who can send me Trade Offers?» bo'limida, «Third-Party Sites» ostida uzun havola turadi.</span>
+      <div class="mock"><div class="lbl">Trade URL</div><div class="row"><div class="url">https://steamcommunity.com/tradeoffer/new/?partner=123456789&amp;token=aBcD1234</div><div class="cp">Copy</div></div></div></div></div>
+    <div class="gstep" style="--i:3"><div class="n">4</div><div><b>«Copy» ni bosing</b><span>Havola telefon xotirasiga nusxalanadi.</span></div></div>
+    <div class="gstep" style="--i:4"><div class="n">5</div><div><b>Bu yerga qaytib «Qo'yish» ni bosing</b><span>Havola avtomatik tekshiriladi va saqlanadi. Pastda Steam akkauntingiz nomi va rasmi chiqadi — o'zingizniki ekanini tekshiring.</span></div></div>
+    <div class="g-note"><b>Muhim.</b> Steam Guard Mobile Authenticator yoqilmagan bo'lsa, Steam skinlarni 15 kungacha ushlab turadi. Steam'da «Create new URL» bossangiz, eski havola ishlamay qoladi — yangisini shu yerga qo'ying.</div>
+    <button class="btn g-open" id="openSteam">Steam'ni ochish</button>
+    <div class="g-sub">steamcommunity.com — Trade URL sahifasi</div>
+  </div></div></div>
 
   <div id="refBox"><div class="h2">Do'stlarni taklif qiling</div>
     <div class="mut" style="font-size:14px;margin-bottom:8px" id="refTxt"></div>
@@ -376,7 +509,7 @@ try { tg?.ready(); tg?.expand(); tg?.setHeaderColor?.('#12070a'); tg?.setBackgro
 const initData = tg?.initData || '';
 
 const S = { me: null, cases: [], caseById: {}, skins: [], skinByKey: {}, rar: {}, pk: [], cfg: {}, imgV: 0,
-  refLink: '', tasks: [], inv: null, cur: 'cases', busy: false, noImg: new Set(),
+  refLink: '', tasks: [], inv: null, invSig: '', prof: {}, cur: 'cases', busy: false, noImg: new Set(), media: new Set(),
   case: null, qty: 1, up: { from: null, to: null }, needle: 0, ct: new Set(), side: 0, feedTop: 0, freeUntil: 0 };
 
 const $ = id => document.getElementById(id);
@@ -417,6 +550,7 @@ const ERR = {
   unknown_skin: "Skin topilmadi",
   unknown_case: "Case topilmadi",
   invalid_url: "Trade URL noto'g'ri. To'liq havolani kiriting (partner va token bilan)",
+  steam_not_found: "Bunday Steam akkaunt topilmadi. Havolani to'liq nusxalaganingizni tekshiring",
   not_member: "Avval kanalga obuna bo'ling",
   already_completed: "Bu vazifa bajarilgan",
   check_failed: "Obunani tekshirib bo'lmadi, keyinroq urinib ko'ring",
@@ -443,9 +577,11 @@ function toast(msg) {
 const rc = r => S.rar[r]?.color || '#B0C3D9';
 const GUN = c => `<svg viewBox="0 0 120 50" aria-hidden="true"><path fill="${c}" opacity=".9" d="M3 20h64l5-6h19l2 4h22v7h-8l-2 4H77l-7 13H57l5-13H45l-6 8h-9l2-8H3z"/></svg>`;
 const CASESVG = c => `<svg viewBox="0 0 120 90" aria-hidden="true"><rect x="8" y="20" width="104" height="62" rx="9" fill="#2c141c" stroke="${c}" stroke-width="3"/><rect x="8" y="36" width="104" height="9" fill="${c}"/><rect x="47" y="8" width="26" height="15" rx="4" fill="none" stroke="${c}" stroke-width="3"/><rect x="52" y="33" width="16" height="15" rx="2" fill="#12070a" stroke="${c}" stroke-width="2.5"/></svg>`;
+const mediaUrl = key => `/img/${encodeURIComponent(key)}?v=${S.imgV}`;
 function pic(key, color, type = 'gun') {
-  if (!key || S.noImg.has(key)) return type === 'case' ? CASESVG(color) : GUN(color);
-  return `<img src="/img/${encodeURIComponent(key)}?v=${S.imgV}" alt="" loading="lazy" data-k="${esc(key)}" data-c="${color}" data-t="${type}" onerror="fbImg(this)">`;
+  // Rasm yuklanmagan kalitlarga so'rov yubormaymiz — darhol chizma ko'rsatiladi (tez)
+  if (!key || S.noImg.has(key) || !S.media.has(key)) return type === 'case' ? CASESVG(color) : GUN(color);
+  return `<img src="${mediaUrl(key)}" alt="" decoding="async" data-k="${esc(key)}" data-c="${color}" data-t="${type}" onerror="fbImg(this)">`;
 }
 window.fbImg = el => { S.noImg.add(el.dataset.k); el.outerHTML = el.dataset.t === 'case' ? CASESVG(el.dataset.c) : GUN(el.dataset.c); };
 
@@ -486,21 +622,21 @@ function tab(t) {
   if (S.busy) return;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   show(t);
-  if (t === 'inv') { $('invDot').classList.remove('on'); loadInv(); }
+  if (t === 'inv') { $('invDot').classList.remove('on'); if (S.inv) renderInv(); loadInv(); }
   if (t === 'prof') loadProfile();
 }
 function back() {
   if (S.busy) return;
   if (S.cur in CHILD) show(CHILD[S.cur]);
 }
-document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => { haptic(); tab(b.dataset.tab); }));
+document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => { haptic(); sfx.click(); tab(b.dataset.tab); }));
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', back));
 try { tg?.BackButton?.onClick(back); } catch (e) {}
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { haptic(); openGame(b.dataset.go); }));
 function openGame(g) {
   show(g);
   if (g === 'upgrade') renderUp();
-  if (g === 'contract') { S.ct.clear(); loadInv().then(renderCt); }
+  if (g === 'contract') { S.ct.clear(); if (S.inv) renderCt(); loadInv().then(renderCt); }
   if (g === 'crash') drawCrash(1, 2, false);
   if (g === 'dice') renderDice();
 }
@@ -527,6 +663,7 @@ async function loadFeed() {
   const d = await api('/api/feed');
   if (d.error || !d.feed) return;
   const top = d.feed[0]?.id || 0;
+  if (top && top === S.feedTop) return;
   $('feed').innerHTML = d.feed.map(f => `<div class="fi${S.feedTop && f.id > S.feedTop ? ' new' : ''}" style="--rc:${rc(f.rarity)}" title="${esc(f.name)}">${pic(f.key, rc(f.rarity))}<div class="w">${esc(f.who)}</div></div>`).join('');
   S.feedTop = top;
 }
@@ -621,13 +758,23 @@ function spinReel(reel, dur) {
   strip.style.transition = 'none'; strip.style.transform = `translateX(${-(2 * step)}px)`; void strip.offsetWidth;
   strip.style.transition = `transform ${dur}ms cubic-bezier(.08,.62,.08,1)`;
   strip.style.transform = `translateX(${x}px)`;
+  if (!reel.previousElementSibling) {            // faqat birinchi reel tiqillaydi
+    let last = -1, lastT = 0; const end = performance.now() + dur;
+    const loop = now => {
+      const m = new DOMMatrixReadOnly(getComputedStyle(strip).transform);
+      const idx = Math.floor((-m.m41 + reel.clientWidth / 2) / step);
+      if (idx !== last && now - lastT > 28) { if (last >= 0) sfx.tick(); last = idx; lastT = now; }
+      if (now < end) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
   return sleep(dur + 60).then(() => { reel.classList.add('done'); tile.classList.add('win'); });
 }
 
 $('openBtn').addEventListener('click', async () => {
   const c = S.case; if (!c || S.busy) return;
   if ($('openBtn').dataset.mode === 'shop') return openShop();
-  S.busy = true; const b = $('openBtn'); b.disabled = true; b.textContent = 'Ochilmoqda…'; haptic('medium');
+  S.busy = true; const b = $('openBtn'); b.disabled = true; b.textContent = 'Ochilmoqda…'; haptic('medium'); sfx.spin();
   const res = await api('/api/open-case', { caseId: c.id, qty: c.free ? 1 : S.qty });
   if (res.error) {
     S.busy = false; err(res.error); renderOpenBtn();
@@ -640,7 +787,9 @@ $('openBtn').addEventListener('click', async () => {
   const dur = $('fast').checked ? 1300 : 5600;
   await Promise.all([...$('reels').querySelectorAll('.reel')].map(r => spinReel(r, dur)));
   notify('success');
-  S.busy = false; S.inv = null; $('invDot').classList.add('on'); renderOpenBtn(); loadFeed();
+  const top = res.results.reduce((a, b) => (b.value > a.value ? b : a));
+  sfx.reveal(top.rarity);
+  S.busy = false; S.inv = null; S.invSig = ''; $('invDot').classList.add('on'); renderOpenBtn(); loadFeed();
   resultSheet(res.results, res.results.length > 1 ? `${res.results.length} ta skin` : 'Sizning yutug\'ingiz', 'w');
 });
 
@@ -661,7 +810,7 @@ function resultSheet(items, title, cls) {
     $('rsSell').disabled = true;
     const r = await api('/api/sell', { ids });
     if (r.error) { err(r.error); $('rsSell').disabled = false; return; }
-    setBal(r.balance); S.inv = null; toast(`+${fmt(r.reward)} ⭐ balansga qo'shildi`); notify('success'); closeSheet();
+    setBal(r.balance); S.inv = null; S.invSig = ''; toast(`+${fmt(r.reward)} ⭐ balansga qo'shildi`); notify('success'); closeSheet();
     if (S.cur === 'upgrade' && S.up.from && ids.includes(S.up.from.id)) { S.up.from = null; renderUp(); }
   };
 }
@@ -669,8 +818,10 @@ function resultSheet(items, title, cls) {
 /* ── Inventar ─────────────────────────────────────── */
 async function loadInv() {
   const d = await api('/api/inventory', {});
-  if (d.error) { err(d.error); return S.inv || []; }
-  S.inv = d.items; renderInv(); return S.inv;
+  if (d.error) { if (!S.inv) err(d.error); return S.inv || []; }
+  const sig = JSON.stringify(d.items);
+  if (sig !== S.invSig || !S.inv) { S.invSig = sig; S.inv = d.items; if (S.cur === 'inv') renderInv(); }
+  return S.inv;
 }
 function renderInv() {
   const items = S.inv || [];
@@ -763,13 +914,13 @@ $('upBtn').addEventListener('click', async () => {
   S.needle = base + 360 * 5 + r.roll * 360;
   $('upNeedle').style.transform = `rotate(${S.needle}deg)`;
   await sleep(4400);
-  S.busy = false; S.inv = null;
+  S.busy = false; S.inv = null; S.invSig = '';
   if (r.win) {
-    notify('success'); $('invDot').classList.add('on');
+    notify('success'); sfx.reveal(r.item.rarity === 'gold' || r.item.rarity === 'covert' ? r.item.rarity : 'classified'); $('invDot').classList.add('on');
     S.up = { from: r.item, to: null }; renderUp();
     resultSheet([r.item], 'Upgrade muvaffaqiyatli!', 'w');
   } else {
-    notify('error'); S.up = { from: null, to }; renderUp();
+    notify('error'); sfx.lose(); S.up = { from: null, to }; renderUp();
     openSheet(`<div class="res-title l">Omad kelmadi</div><div style="opacity:.55">${bigHTML(from)}</div><button class="btn" id="rsOk">Yana urinish</button>`);
     $('rsOk').onclick = closeSheet;
   }
@@ -807,7 +958,7 @@ $('ctBtn').addEventListener('click', async () => {
   await sleep(700);
   S.busy = false;
   if (r.error) { err(r.error); S.ct.clear(); await loadInv(); renderCt(); return; }
-  S.ct.clear(); notify('success'); $('invDot').classList.add('on');
+  S.ct.clear(); notify('success'); sfx.reveal(r.item.rarity); $('invDot').classList.add('on');
   await loadInv(); renderCt();
   const better = r.item.value >= r.stake;
   resultSheet([r.item], better ? 'Zo\'r natija!' : 'Shartnoma natijasi', better ? 'w' : '');
@@ -877,14 +1028,14 @@ $('crBtn').addEventListener('click', async () => {
       const p = Math.min(1, (now - t0) / dur), m = Math.exp(Math.log(crash) * p);
       $('crMx').textContent = m.toFixed(2) + 'x'; drawCrash(m, crash, false);
       if (r.win && !cashed && m >= target) {
-        cashed = true; box.classList.add('cashed'); $('crMsg').textContent = `${target.toFixed(2)}x da yechildi: +${fmt(r.payout)} ⭐`; notify('success');
+        cashed = true; box.classList.add('cashed'); $('crMsg').textContent = `${target.toFixed(2)}x da yechildi: +${fmt(r.payout)} ⭐`; notify('success'); sfx.win();
       }
       p < 1 ? requestAnimationFrame(frame) : done();
     };
     requestAnimationFrame(frame);
   });
   $('crMx').textContent = crash.toFixed(2) + 'x'; drawCrash(crash, crash, true); box.classList.add('boom');
-  if (!r.win) { $('crMsg').textContent = `Portladi! −${fmt(bet)} ⭐`; notify('error'); }
+  if (!r.win) { $('crMsg').textContent = `Portladi! −${fmt(bet)} ⭐`; notify('error'); sfx.lose(); }
   crHist.unshift(`<span class="${r.win ? 'w' : 'l'}">${crash.toFixed(2)}x</span>`); crHist.length = Math.min(crHist.length, 15);
   $('crHist').innerHTML = crHist.join('');
   setBal(r.balance); S.busy = false; b.disabled = false; b.textContent = "O'ynash";
@@ -913,7 +1064,7 @@ $('dcBtn').addEventListener('click', async () => {
   const t0 = performance.now();
   await new Promise(done => { const f = now => { num.textContent = (Math.random() * 100).toFixed(2); now - t0 < 650 ? requestAnimationFrame(f) : done(); }; requestAnimationFrame(f); });
   num.textContent = r.roll.toFixed(2); num.classList.add(r.win ? 'w' : 'l'); $('dcMk').style.left = r.roll + '%';
-  r.win ? (notify('success'), toast(`+${fmt(r.payout)} ⭐`)) : notify('error');
+  r.win ? (notify('success'), sfx.win(), toast(`+${fmt(r.payout)} ⭐`)) : (notify('error'), sfx.lose());
   setBal(r.balance); S.busy = false; $('dcBtn').disabled = false;
 });
 
@@ -944,38 +1095,103 @@ $('balBtn').addEventListener('click', () => { haptic(); openShop(); });
 /* ── Profil ───────────────────────────────────────── */
 const GAME_NAMES = { upgrade: 'Upgrade', contract: 'Shartnoma', crash: 'Crash', dice: 'Dice' };
 const WD = { pending: ['Kutilmoqda', ''], sent: ['Yuborildi', 'ok'], rejected: ['Rad etildi', 'no'] };
+function setHTML(el, html) { if (el._h !== html) { el._h = html; el.innerHTML = html; } }
 async function loadProfile() {
   const me = S.me, name = me.firstName || me.username || "O'yinchi";
   $('pfAv').textContent = name.charAt(0).toUpperCase(); $('pfName').textContent = name;
   $('pfUser').textContent = me.username ? '@' + me.username : '';
-  $('steamUrl').value = me.steamUrl || '';
+  if (document.activeElement !== $('steamUrl')) $('steamUrl').value = me.steamUrl || '';
+  renderSteamCard();
+  renderProfile();                                   // keshdan darhol
   const [p, h, w, lb] = await Promise.all([api('/api/profile', {}), api('/api/history', {}), api('/api/withdrawals', {}), api('/api/leaderboard')]);
-  if (!p.error) {
+  Object.assign(S.prof, { p: p.error ? S.prof.p : p, h: h.error ? S.prof.h : h, w: w.error ? S.prof.w : w, lb: lb.error ? S.prof.lb : lb });
+  if (S.cur === 'prof') renderProfile();
+}
+function renderProfile() {
+  const { p, h, w, lb } = S.prof;
+  if (p) {
     $('pfCases').textContent = fmt(p.casesOpened); $('pfGames').textContent = fmt(p.gamesPlayed); $('pfRefs').textContent = fmt(p.referrals);
     const sk = p.best && (S.skinByKey[p.best.key] || { key: p.best.key, name: p.best.name, value: p.best.value, rarity: 'consumer' });
-    $('pfBest').innerHTML = sk ? `<div class="h2">Eng yaxshi yutuq</div><div style="max-width:160px">${tileHTML({ ...sk, value: p.best.value })}</div>` : '';
+    setHTML($('pfBest'), sk ? `<div class="h2">Eng yaxshi yutuq</div><div style="max-width:160px">${tileHTML({ ...sk, value: p.best.value })}</div>` : '');
   }
-  $('histList').innerHTML = (h.games || []).length ? h.games.map(g => {
+  if (h) setHTML($('histList'), (h.games || []).length ? h.games.map(g => {
     const d = g.payout - g.bet;
     return `<div class="li"><b>${esc(GAME_NAMES[g.game] || g.game)}</b><span class="mut">${fmt(g.bet)} ⭐</span><span class="r ${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : '−'}${fmt(Math.abs(d))} ⭐</span></div>`;
-  }).join('') : `<div class="mut" style="font-size:14px">Hali o'ynamagansiz</div>`;
-  $('wdList').innerHTML = (w.items || []).length ? w.items.map(x => {
+  }).join('') : `<div class="mut" style="font-size:14px">Hali o'ynamagansiz</div>`);
+  if (w) setHTML($('wdList'), (w.items || []).length ? w.items.map(x => {
     const [t, c] = WD[x.status] || [x.status, ''];
     return `<div class="li"><span>${esc(x.prize_name)}</span><span class="r"><span class="badge ${c}">${t}</span></span></div>`;
-  }).join('') : `<div class="mut" style="font-size:14px">So'rovlar yo'q</div>`;
-  $('lbList').innerHTML = (lb.leaderboard || []).length ? lb.leaderboard.map((u, i) =>
+  }).join('') : `<div class="mut" style="font-size:14px">So'rovlar yo'q</div>`);
+  if (lb) setHTML($('lbList'), (lb.leaderboard || []).length ? lb.leaderboard.map((u, i) =>
     `<div class="li"><span class="lb-n">${i + 1}</span><span>${esc(u.who)}</span><span class="r">${fmt(u.total)} ⭐</span></div>`).join('')
-    : `<div class="mut" style="font-size:14px">Bu hafta hali hech kim yo'q</div>`;
+    : `<div class="mut" style="font-size:14px">Bu hafta hali hech kim yo'q</div>`);
 }
-$('steamSave').addEventListener('click', async () => {
-  const url = $('steamUrl').value.trim();
+/* ── Steam Trade URL ─────────────────────────────── */
+const STEAM_PAGE = 'https://steamcommunity.com/my/tradeoffers/privacy#trade_offer_access_url';
+const extractTradeUrl = t => (String(t || '').match(/(?:https?:\/\/)?(?:www\.)?steamcommunity\.com\/tradeoffer\/new\/?\?[^\s"'<>]+/i) || [''])[0];
+const looksValid = u => /partner=\d+/.test(u) && /token=[\w-]{6,12}/.test(u);
+function stState(cls, msg) {
+  $('stField').classList.remove('ok', 'bad'); if (cls) $('stField').classList.add(cls);
+  const m = $('stMsg'); m.className = 'st-msg' + (cls ? ' ' + cls : ''); m.textContent = msg || '';
+}
+function renderSteamCard() {
+  const st = S.me?.steam;
+  if (!st) { setHTML($('stCard'), ''); return; }
+  const av = st.avatar ? `<img src="${esc(st.avatar)}" alt="" referrerpolicy="no-referrer">` : `<div class="st-av">${esc((st.name || 'S').charAt(0).toUpperCase())}</div>`;
+  setHTML($('stCard'), `<div class="st-card">${av}<div><b>${esc(st.name || 'Steam akkaunt')}</b><small>${st.name ? '✓ Akkaunt topildi' : 'Havola saqlangan'}</small></div>`
+    + (st.profile ? `<button id="stProfile">Profilni ko'rish</button>` : '') + `</div>`);
+  $('stProfile')?.addEventListener('click', () => openExt(st.profile));
+}
+let stTimer = 0, stSaving = false;
+async function saveSteam(raw, auto) {
+  const url = extractTradeUrl(raw) || String(raw || '').trim();
+  if (!url) return stState('bad', "Trade URL ni kiriting yoki «Qo'yish» ni bosing");
+  if (!looksValid(url)) return stState('bad', "Bu to'liq Trade URL emas — partner va token qismlari bo'lishi kerak");
+  if (stSaving) return; stSaving = true;
+  stState('', 'Tekshirilmoqda…'); $('steamSave').disabled = true;
   const r = await api('/api/set-steam', { url });
-  if (r.error) return err(r.error);
-  S.me.steamUrl = url; toast('✅ Trade URL saqlandi'); notify('success');
+  stSaving = false; $('steamSave').disabled = false;
+  if (r.error) { stState('bad', (ERR[r.error] && typeof ERR[r.error] === 'string') ? ERR[r.error] : "Saqlab bo'lmadi, qayta urinib ko'ring"); notify('error'); return; }
+  // Haqiqatan saqlanganini serverdan qayta o'qib tasdiqlaymiz
+  const me = await refreshMe();
+  if (me.error || me.steamUrl !== r.steam.url) { stState('bad', "Saqlanmadi — internetni tekshirib, qayta urinib ko'ring"); return; }
+  $('steamUrl').value = me.steamUrl; renderSteamCard();
+  stState('ok', r.verified ? '✓ Saqlandi va Steam akkaunt tekshirildi' : "✓ Saqlandi. Steam profilini hozir ko'rib bo'lmadi — havolani o'zingiz tekshiring");
+  notify('success'); if (!auto) toast('✅ Trade URL saqlandi');
+}
+$('steamUrl').addEventListener('input', () => {
+  clearTimeout(stTimer);
+  const v = $('steamUrl').value.trim(), u = extractTradeUrl(v);
+  if (!v) return stState('', '');
+  if (u && looksValid(u)) {
+    if (u === S.me.steamUrl) return stState('ok', '✓ Shu havola saqlangan');
+    stState('', 'To‘g‘ri ko‘rinadi — saqlanmoqda…'); stTimer = setTimeout(() => saveSteam(u, true), 600);
+  } else if (v.length > 12) stState('bad', "Bu to'liq Trade URL emas — Steam'dagi «Copy» tugmasi bilan nusxalang");
+});
+$('steamSave').addEventListener('click', () => { clearTimeout(stTimer); saveSteam($('steamUrl').value); });
+$('steamPaste').addEventListener('click', async () => {
+  let t = '';
+  try { t = await navigator.clipboard.readText(); } catch (e) {}
+  if (!t && tg?.readTextFromClipboard) t = await new Promise(r => { try { tg.readTextFromClipboard(x => r(x || '')); } catch (e) { r(''); } setTimeout(() => r(''), 1500); });
+  if (!t) { $('steamUrl').focus(); toast("Maydonni bosib turing va «Вставить / Paste» ni tanlang"); return; }
+  $('steamUrl').value = extractTradeUrl(t) || t.trim(); clearTimeout(stTimer); saveSteam($('steamUrl').value);
 });
 $('steamHelp').addEventListener('click', () => {
-  const u = 'https://steamcommunity.com/my/tradeoffers/privacy#trade_offer_access_url';
-  tg?.openLink ? tg.openLink(u) : window.open(u, '_blank');
+  const g = $('guide'), open = !g.classList.contains('open');
+  g.classList.toggle('open', open); $('steamHelp').setAttribute('aria-expanded', open); haptic();
+  if (open) setTimeout(() => g.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+});
+const openExt = url => { try { tg?.openLink ? tg.openLink(url, { try_instant_view: false }) : window.open(url, '_blank'); } catch (e) { window.open(url, '_blank'); } };
+$('openSteam').addEventListener('click', () => {
+  haptic('medium');
+  const plat = String(tg?.platform || '').toLowerCase();
+  const mobile = plat === 'android' || plat === 'ios' || /android|iphone|ipad/i.test(navigator.userAgent);
+  if (mobile) return openExt(STEAM_PAGE);       // telefon: tizim Steam ilovasiga yoki brauzerga ochadi
+  // Kompyuter: avval Steam dasturini ochamiz; ochilmasa — saytni
+  let left = false; const onBlur = () => { left = true; };
+  window.addEventListener('blur', onBlur, { once: true });
+  try { window.location.href = 'steam://openurl/' + STEAM_PAGE; } catch (e) {}
+  setTimeout(() => { window.removeEventListener('blur', onBlur); if (!left && !document.hidden) openExt(STEAM_PAGE); }, 1800);
 });
 function renderRef() {
   $('refBox').classList.toggle('hide', !S.refLink);
@@ -1011,16 +1227,252 @@ function renderTasks() {
   }));
 }
 
+/* ── Ovoz ────────────────────────────────────────────
+   Admin bot orqali snd_* kalitli ovoz yuklasa — o'sha ijro etiladi,
+   aks holda shu yerda sintez qilingan standart ovoz chalinadi. */
+const sfx = (() => {
+  let ctx = null, master = null, amb = null, on = true, lastTick = 0;
+  const buf = {};                                   // yuklangan maxsus ovozlar
+  try { on = localStorage.getItem('cv_sound') !== '0'; } catch (e) {}
+  const ensure = () => {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = on ? 0.9 : 0; master.connect(ctx.destination);
+    return ctx;
+  };
+  const ok = () => on && ensure() && ctx.state === 'running';
+  const noise = dur => {
+    const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = b; return src;
+  };
+  const env = (g, t, a, peak, dec) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); };
+  function tone(type, f0, f1, t, dur, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    env(g, t, 0.005, vol, dur); o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function burst(t, freq, q, vol, dur, type = 'bandpass') {
+    const n = noise(dur + 0.02), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = type; f.frequency.value = freq; f.Q.value = q; env(g, t, 0.002, vol, dur);
+    n.connect(f).connect(g).connect(master); n.start(t); n.stop(t + dur + 0.03);
+  }
+  function play(name, vol = 1, rate = 1) {          // maxsus ovoz bo'lsa — ijro etadi
+    const b = buf[name]; if (!b || !ok()) return false;
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = b; src.playbackRate.value = rate; g.gain.value = vol;
+    src.connect(g).connect(master); src.start(); return true;
+  }
+
+  // Case reel'i: har skin o'tganda «tak» (yog'och + metall aralash, sal o'zgaruvchan balandlik)
+  function tick() {
+    if (!ok()) return; const now = performance.now(); if (now - lastTick < 26) return; lastTick = now;
+    if (play('tick', 0.9, 0.96 + Math.random() * 0.08)) return;
+    const t = ctx.currentTime, f = 1700 + Math.random() * 300;
+    tone('square', f, f * 0.55, t, 0.028, 0.08);
+    burst(t, 3800, 3, 0.16, 0.022);
+    tone('sine', 190, 110, t, 0.035, 0.12);
+  }
+  const dialTick = () => { if (!ok()) return; const t = ctx.currentTime; burst(t, 3200, 4, 0.07, 0.025); };
+  function spin() {                                   // case ochila boshlaganda
+    if (!ok() || play('spin')) return; const t = ctx.currentTime;
+    tone('sawtooth', 90, 260, t, 0.5, 0.06); burst(t, 900, 0.7, 0.18, 0.45, 'lowpass');
+    tone('triangle', 520, 780, t + 0.05, 0.18, 0.08);
+  }
+  function drop() {                                   // oddiy skin
+    if (!ok() || play('drop')) return; const t = ctx.currentTime;
+    tone('triangle', 660, 0, t, 0.25, 0.18); tone('triangle', 990, 0, t + 0.08, 0.3, 0.14);
+  }
+  function chord(notes, step, type, vol) {
+    const t = ctx.currentTime; notes.forEach((n, i) => tone(type, n, 0, t + i * step, 0.5, vol));
+  }
+  const win = () => { if (!ok() || play('win')) return; chord([523, 659, 784, 1047], 0.07, 'triangle', 0.22); };
+  const jackpot = () => {
+    if (!ok() || play('rare')) return;
+    chord([392, 523, 659, 784, 1047, 1319], 0.08, 'triangle', 0.26);
+    setTimeout(() => ok() && chord([1047, 1319, 1568], 0, 'sine', 0.14), 520);
+    burst(ctx.currentTime, 6000, 0.6, 0.06, 1.2, 'highpass');
+  };
+  const lose = () => { if (!ok() || play('lose')) return; const t = ctx.currentTime; tone('sawtooth', 220, 70, t, 0.45, 0.09); tone('sine', 140, 60, t, 0.5, 0.2); };
+  const click = () => { if (!ok() || play('click', 0.6)) return; burst(ctx.currentTime, 2400, 2, 0.05, 0.018); };
+  function reveal(rarity) { ['covert', 'gold'].includes(rarity) ? jackpot() : rarity === 'classified' ? win() : drop(); }
+  function clunk() {
+    if (!ok() || play('unlock')) return; const t = ctx.currentTime;
+    tone('sine', 150, 38, t, 0.45, 0.7); burst(t, 900, 1, 0.45, 0.22, 'lowpass');
+    [0.09, 0.16, 0.22, 0.27].forEach((d, i) => setTimeout(() => ok() && burst(ctx.currentTime, 1400 - i * 150, 4, 0.3, 0.03), d * 1000));
+  }
+  function whoosh() {
+    if (!ok()) return; const t = ctx.currentTime;
+    const n = noise(1.2), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'bandpass'; f.Q.value = 0.8; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(3500, t + 0.9);
+    env(g, t, 0.25, 0.35, 0.8); n.connect(f).connect(g).connect(master); n.start(t); n.stop(t + 1.2);
+    tone('sawtooth', 70, 140, t, 0.9, 0.08);
+  }
+  function ambient(start) {
+    if (!start) {
+      if (amb && ctx) { const t = ctx.currentTime, a = amb; a.g.gain.cancelScheduledValues(t); a.g.gain.setTargetAtTime(0.0001, t, 0.4); setTimeout(() => a.stop(), 2500); amb = null; }
+      return;
+    }
+    if (amb || !ok()) return; const t = ctx.currentTime, g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.connect(master);
+    if (buf.ambient) {
+      const src = ctx.createBufferSource(); src.buffer = buf.ambient; src.loop = true; src.connect(g); src.start();
+      g.gain.exponentialRampToValueAtTime(0.7, t + 1.2); amb = { g, custom: true, stop: () => { try { src.stop(); } catch (e) {} } };
+      return;
+    }
+    const f = ctx.createBiquadFilter(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    f.type = 'lowpass'; f.frequency.value = 420; f.Q.value = 6;
+    lfo.frequency.value = 0.18; lg.gain.value = 180; lfo.connect(lg).connect(f.frequency);
+    const oscs = [55, 55.4, 82.4, 110.2].map((fr, i) => { const o = ctx.createOscillator(); o.type = i < 2 ? 'sawtooth' : 'sine'; o.frequency.value = fr; o.connect(f); o.start(t); return o; });
+    oscs.push(lfo); lfo.start(t); f.connect(g);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 1.5);
+    amb = { g, custom: false, stop: () => oscs.forEach(o => { try { o.stop(); } catch (e) {} }) };
+  }
+  // Admin yuklagan ovozlarni oldindan yuklab, xotirada tayyor turadi
+  async function loadCustom(keys, ver) {
+    if (!ensure()) return;
+    await Promise.all(keys.filter(k => k.startsWith('snd_')).map(async k => {
+      try {
+        const r = await fetch(`/img/${k}?v=${ver}`); if (!r.ok) return;
+        const ab = await r.arrayBuffer();
+        buf[k.slice(4)] = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(ab, res, rej); if (pr && pr.catch) pr.catch(rej); });
+      } catch (e) { /* buzuq fayl — standart ovoz qoladi */ }
+    }));
+    if (amb && !amb.custom && buf.ambient) { ambient(false); ambient(true); }
+  }
+  async function unlockAudio() {
+    if (!ensure()) return false;
+    if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
+    return ctx.state === 'running';
+  }
+  function setOn(v) {
+    on = v; try { localStorage.setItem('cv_sound', v ? '1' : '0'); } catch (e) {}
+    if (ctx && master) master.gain.setTargetAtTime(v ? 0.9 : 0, ctx.currentTime, 0.05);
+    renderSnd();
+  }
+  return { tick, dialTick, spin, drop, win, jackpot, lose, click, reveal, clunk, whoosh, ambient, loadCustom, unlockAudio, setOn,
+    get on() { return on; }, get running() { return !!ctx && ctx.state === 'running'; } };
+})();
+
+const SND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+const SND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+function renderSnd() { document.querySelectorAll('[data-snd]').forEach(b => { b.innerHTML = sfx.on ? SND_ON : SND_OFF; b.setAttribute('aria-pressed', sfx.on); }); }
+document.querySelectorAll('[data-snd]').forEach(b => b.addEventListener('click', async e => {
+  e.stopPropagation(); sfx.setOn(!sfx.on);
+  if (sfx.on && await sfx.unlockAudio() && $('gate') && !Loader.opened) sfx.ambient(true);
+}));
+renderSnd();
+// Birinchi teginishda audio yoqiladi (brauzer qoidasi)
+['pointerdown', 'touchstart', 'keydown'].forEach(ev => window.addEventListener(ev, async () => {
+  if (await sfx.unlockAudio() && $('gate') && !Loader.opened) sfx.ambient(true);
+}, { once: true, passive: true }));
+
+/* ── CaseVault yuklanish ekrani ───────────────────── */
+const Loader = (() => {
+  const RING = 2 * Math.PI * 126;
+  const STEPS = ['Seyf qulfi tekshirilmoqda', 'Serverga ulanmoqda', "Skinlar ro'yxati yuklanmoqda", 'Balans tekshirilmoqda', 'Seyf ochilmoqda'];
+  let shown = 0, target = 0, dial = 0, raf = 0, lastTick = 0, t0 = performance.now(), opened = false, done = false;
+  // Murvat va belgilarni chizish
+  const bolts = [], ticks = [];
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, x = 130 + Math.cos(a) * 104, y = 130 + Math.sin(a) * 104;
+    bolts.push(`<rect class="v-bolt" style="--bx:${Math.cos(a) * -10}px;--by:${Math.sin(a) * -10}px" x="${x - 9}" y="${y - 5}" width="18" height="10" rx="3" fill="#e3242b" transform="rotate(${i * 45} ${x} ${y})"/>`);
+  }
+  for (let i = 0; i < 40; i++) {
+    const a = i * Math.PI / 20, r1 = i % 5 ? 50 : 46;
+    ticks.push(`<line x1="${130 + Math.cos(a) * r1}" y1="${130 + Math.sin(a) * r1}" x2="${130 + Math.cos(a) * 55}" y2="${130 + Math.sin(a) * 55}" stroke="#7d6062" stroke-width="${i % 5 ? 1 : 2}"/>`);
+  }
+  $('vBolts').innerHTML = bolts.join(''); $('vTicks').innerHTML = ticks.join('');
+
+  function frame(now) {
+    // Server javob bergunicha 92% gacha sekin o'sadi, javob kelgach 100% ga
+    const el = (now - t0) / 1000;
+    if (!done) target = Math.min(92, 92 * (1 - Math.exp(-el / 2.2)));
+    shown += (target - shown) * (done ? 0.14 : 0.06);
+    if (done && target - shown < 0.6) shown = 100;
+    const pct = Math.min(100, shown);
+    $('vRing').setAttribute('stroke-dasharray', `${pct / 100 * RING} ${RING}`);
+    $('gPct').textContent = Math.floor(pct) + '%';
+    $('gTxt').textContent = STEPS[Math.min(STEPS.length - 1, Math.floor(pct / 100 * STEPS.length))];
+    // Qulf murvati: tebranib aylanadi, har 9° da "tiq"
+    const nd = Math.sin(el * 1.3) * 140 + el * 40;
+    if (Math.abs(nd - lastTick) >= 9) { sfx.dialTick(); lastTick = nd; }
+    dial = nd; $('vDial').style.transform = `rotate(${dial}deg)`;
+    if (done && pct > 99.5) { cancelAnimationFrame(raf); return ready(); }
+    raf = requestAnimationFrame(frame);
+  }
+  raf = requestAnimationFrame(frame);
+
+  async function ready() {
+    $('gPct').textContent = '100%'; $('gTxt').textContent = 'Seyf tayyor';
+    // Audio ruxsat berilgan bo'lsa — darhol ochamiz, aks holda bitta bosish so'raymiz (ovoz shu bosishdan yoqiladi)
+    if (!sfx.on || sfx.running) return open();
+    $('gate').classList.add('ready');
+    const go = async () => { await sfx.unlockAudio(); open(); };
+    $('gTap').addEventListener('click', go, { once: true });
+    $('gate').querySelector('.vault').addEventListener('click', go, { once: true });
+  }
+  async function open() {
+    if (opened) return; opened = true;
+    const g = $('gate'); g.classList.remove('ready');
+    // Murvatni tez aylantirib, qulfni ochamiz
+    const from = dial, start = performance.now();
+    await new Promise(res => {
+      const spin = now => {
+        const p = Math.min(1, (now - start) / 650), e = 1 - Math.pow(1 - p, 3);
+        $('vDial').style.transform = `rotate(${from + e * 540}deg)`;
+        p < 1 ? requestAnimationFrame(spin) : res();
+      };
+      requestAnimationFrame(spin);
+    });
+    sfx.clunk(); haptic('heavy'); g.classList.add('unlock');
+    await sleep(380);
+    sfx.whoosh(); sfx.ambient(false); g.classList.add('open', 'out');
+    await sleep(1000);
+    g.remove();
+  }
+  function finish() { done = true; target = 100; }
+  function fail(html) {
+    cancelAnimationFrame(raf); done = true; opened = true; sfx.ambient(false);
+    $('gTxt').textContent = 'Seyfni ochib bo\'lmadi'; $('gPct').textContent = '';
+    $('gMsg').innerHTML = html;
+  }
+  return { finish, fail, get opened() { return opened; } };
+})();
+
+/* ── O'yin rasmlari va oldindan yuklash ───────────── */
+function renderGameArt() {
+  document.querySelectorAll('.gm[data-go]').forEach(card => {
+    const k = 'game_' + card.dataset.go; card.querySelector('.art')?.remove();
+    const has = S.media.has(k); card.classList.toggle('has-art', has);
+    if (has) card.insertAdjacentHTML('beforeend', `<div class="art"><img src="${mediaUrl(k)}" alt="" decoding="async"></div>`);
+    const sc = $('sc-' + card.dataset.go); sc.querySelector('.gbanner')?.remove();
+    if (has) sc.querySelector('.back').insertAdjacentHTML('afterend', `<div class="gbanner"><img src="${mediaUrl(k)}" alt="" decoding="async"></div>`);
+  });
+}
+const idle = fn => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 600 }) : setTimeout(fn, 30));
+function preloadMedia() {
+  // Barcha rasmlarni fonda oldindan yuklaymiz — case aylanganda yoki bo'limga o'tganda qotmaydi
+  const keys = [...S.media].filter(k => !k.startsWith('snd_'));
+  let i = 0;
+  const next = () => {
+    const batch = keys.slice(i, i + 6); i += 6; if (!batch.length) return;
+    Promise.all(batch.map(k => new Promise(r => { const im = new Image(); im.decoding = 'async'; im.onload = im.onerror = r; im.src = mediaUrl(k); })))
+      .then(() => idle(next));
+  };
+  setTimeout(() => idle(next), 300);
+}
+
 /* ── Ishga tushirish ──────────────────────────────── */
 async function boot() {
   if (!initData) {
-    $('gate').innerHTML = `<div class="brand" style="font-size:28px"><i></i>CS2 CASES</div><div class="mut">Bu ilova Telegram ichida ishlaydi.<br>Botdagi «O'yinni boshlash» tugmasini bosing.</div>`;
+    Loader.fail(`Bu ilova Telegram ichida ishlaydi.<br>Botdagi «O'yinni boshlash» tugmasini bosing.`);
     return;
   }
   const d = await api('/api/bootstrap', {});
   if (d.error) {
     const m = ERR[d.error] ?? ERR.server_error;
-    $('gate').innerHTML = `<div class="mut">${esc(typeof m === 'function' ? m() : m)}</div><button class="btn" style="max-width:220px" onclick="location.reload()">Qayta urinish</button>`;
+    Loader.fail(`${esc(typeof m === 'function' ? m() : m)}<button class="btn" onclick="location.reload()">Qayta urinish</button>`);
     return;
   }
   S.me = d.me; S.cases = d.cases; S.skins = d.skins; S.rar = d.rarities; S.pk = d.packages; S.cfg = d.config;
@@ -1028,8 +1480,11 @@ async function boot() {
   S.cases.forEach(c => S.caseById[c.id] = c); S.skins.forEach(s => S.skinByKey[s.key] = s);
   $('crBet').value = $('dcBet').value = Math.max(S.cfg.minBet, 10);
   setBal(S.me.balance); setFree(S.me.freeSecondsLeft);
-  renderCases(); setupBetChips(); renderDice(); renderRef(); renderTasks();
-  $('gate').remove();
+  S.media = new Set(d.media || []);
+  renderCases(); renderGameArt(); setupBetChips(); renderDice(); renderRef(); renderTasks();
+  sfx.loadCustom(d.media || [], S.imgV);
+  Loader.finish();
+  preloadMedia();
   loadFeed(); setInterval(() => { if (!document.hidden) loadFeed(); }, 12000);
 }
 boot();

@@ -1,4 +1,4 @@
-# CS2 Cases Bot 🔥
+# CaseVault 🔥
 
 Telegram Mini App: CS2 case'lar, Upgrade, Shartnoma, Crash, Dice. To'lov — Telegram Stars.
 Python 3.11 · FastAPI · python-telegram-bot 20 · PostgreSQL (Supabase) · Render.
@@ -24,16 +24,17 @@ case-bot/
 - Root Directory: `case-bot` · Build: `pip install -r requirements.txt` · Start: `python main.py`
 - Environment: `.env.example` ga qarang. Majburiy: `BOT_TOKEN`, `DATABASE_URL`, `WEBAPP_URL`.
 
-## Haqiqiy qurol rasmlarini qo'shish
-1. Botga (ADMIN_CHAT_ID akkauntidan) rasm yuboring.
-2. Rasm izohiga skin kalitini yozing: `awp_asi` (yoki to'liq nomi: `AWP | Asiimov`).
-3. Fonsiz PNG bo'lsa — **fayl sifatida** yuboring, aks holda Telegram fonni oq qiladi.
-- Case rasmi uchun kalit: `case_ak`, `case_knife`, `case_free` …
-- `/skins` — qaysi skinda rasm bor/yo'qligini ko'rsatadi. `/delimg kalit` — o'chiradi.
-Rasmlar bazada saqlanadi, shuning uchun Render qayta ishga tushsa ham yo'qolmaydi.
+## Rasm va ovoz qo'shish (bot orqali)
+Botga admin akkauntdan fayl yuboring, izohiga kalitni yozing. `/skins` — barcha kalitlar va nimasi borligi.
+- **Qurollar:** `awp_asi`, `ak47_red` … (yoki to'liq nomi `AWP | Asiimov`)
+- **Case'lar:** `case_free`, `case_ak`, `case_knife` …
+- **O'yinlar:** `game_upgrade`, `game_contract`, `game_crash`, `game_dice` — o'yin kartasida va o'yin sahifasi tepasida chiqadi
+- **Ovozlar (MP3/OGG, 2 MB gacha):** `snd_tick`, `snd_spin`, `snd_drop`, `snd_win`, `snd_rare`, `snd_unlock`, `snd_ambient`, `snd_click`, `snd_lose`
+Rasm avtomatik moslanadi: chetdagi bo'sh/bir xil fon kesiladi, 640 px gacha kichraytiriladi, WebP'ga o'giriladi.
+Ovoz yuklanmagan bo'lsa — ilova o'zining standart ovozini chaladi.
 
 ## Admin buyruqlari
-`/admin` · `/pending` · `/confirm_123` · `/reject_123 sabab` · `/skins` · `/delimg kalit`
+`/admin` · `/myid` · `/pending` · `/confirm_123` · `/reject_123 sabab` · `/skins` · `/delimg kalit`
 
 ## Iqtisod
 - Skin qiymati (`catalog.py` → `SKINS`) Stars'da. Sotilsa shuncha Stars qaytadi.
@@ -46,3 +47,10 @@ Rasmlar bazada saqlanadi, shuning uchun Render qayta ishga tushsa ham yo'qolmayd
 ```python
 {"id": "awp", "name": "AWP", "badge": "Yangi", "items": [("awp_hb", 500), ("awp_asi", 200), ("awp_dl", 2)]},
 ```
+
+## Server uxlab qolmasligi uchun (Render bepul tarif)
+Bepul tarifda server 15 daqiqa ishlatilmasa uxlaydi va keyingi kirishda Render'ning
+"Application loading" sahifasi 30–60 soniya ko'rinadi. Buni oldini olish:
+1. https://uptimerobot.com → Add New Monitor → HTTP(s)
+2. URL: `https://<servis>.onrender.com/health`, interval: 5 daqiqa
+Bitta servis uchun oylik bepul 750 soat yetadi (24/7 ≈ 744 soat).

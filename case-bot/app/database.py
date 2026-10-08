@@ -230,6 +230,9 @@ ALTER TABLE referrals ADD COLUMN IF NOT EXISTS reward_given BOOLEAN DEFAULT FALS
 ALTER TABLE inventory ADD COLUMN IF NOT EXISTS skin_key TEXT;
 ALTER TABLE inventory ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'case';
 ALTER TABLE case_openings ADD COLUMN IF NOT EXISTS skin_key TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_avatar TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id64 TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referrals_referred ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_openings_user   ON case_openings(telegram_id);
@@ -362,10 +365,15 @@ def get_me(telegram_id: int, username, first_name, cooldown_h: int) -> dict:
         return row
 
 
-def set_steam_url(telegram_id: int, url: str) -> None:
+def set_steam_url(telegram_id: int, url: str, id64: str | None = None,
+                  name: str | None = None, avatar: str | None = None) -> dict:
     with db() as cur:
         _ensure_user(cur, telegram_id)
-        cur.execute("UPDATE users SET steam_trade_url = %s WHERE telegram_id = %s", (url, telegram_id))
+        cur.execute(
+            "UPDATE users SET steam_trade_url = %s, steam_id64 = %s, steam_name = %s, steam_avatar = %s "
+            "WHERE telegram_id = %s RETURNING steam_trade_url, steam_id64, steam_name, steam_avatar",
+            (url, id64, name, avatar, telegram_id))
+        return dict(cur.fetchone())
 
 
 # ── Case ochish ───────────────────────────────────────────────────────

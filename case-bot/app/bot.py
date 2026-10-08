@@ -58,7 +58,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     name = _esc(user.first_name or "do'stim")
     await update.message.reply_text(
-        f"Salom, {name}! 🔥\n\n"
+        f"<b>CaseVault</b>'ga xush kelibsiz, {name}! 🔥\n\n"
         "Case oching, Upgrade, Crash va boshqa o'yinlarda skin yutib oling.\n"
         "Har kuni bitta bepul case sizni kutadi 🎁",
         reply_markup=_play_kb(),
@@ -77,22 +77,29 @@ async def cmd_me(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_setsteam(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    from app.api import _valid_trade_url  # noqa: E402
+    from app import steam
 
     if not ctx.args:
         await update.message.reply_text(
-            "<b>Steam Trade URL qo'shish:</b>\n\n"
-            "Steam → Inventar → Trade offers → Who can send me trade offers → Trade URL\n\n"
-            "Format:\n<code>/setsteam https://steamcommunity.com/tradeoffer/new/?partner=...&amp;token=...</code>",
+            "<b>Steam Trade URL qo'shish</b>\n\n"
+            "Eng osoni — ilovadagi Profil bo'limida «Qayerdan topaman?» qo'llanmasi.\n\n"
+            "Yoki shu yerga yozing:\n<code>/setsteam https://steamcommunity.com/tradeoffer/new/?partner=...&amp;token=...</code>",
             parse_mode="HTML",
         )
         return
-    url = ctx.args[0].strip()
-    if not _valid_trade_url(url):
-        await update.message.reply_text("❌ Noto'g'ri URL. To'liq Steam trade link yuboring (partner va token bilan).")
+    try:
+        clean, partner, _ = steam.parse_trade_url(ctx.args[0])
+        id64 = steam.to_id64(partner)
+        prof = await steam.fetch_profile(id64)
+    except steam.SteamError as e:
+        await update.message.reply_text(
+            "❌ Bunday Steam akkaunt topilmadi." if e.code == "steam_not_found"
+            else "❌ Noto'g'ri URL. To'liq Trade URL yuboring (partner va token bilan).")
         return
-    await asyncio.to_thread(dbm.set_steam_url, update.effective_user.id, url)
-    await update.message.reply_text("✅ Steam Trade URL saqlandi!")
+    await asyncio.to_thread(dbm.set_steam_url, update.effective_user.id, clean, id64,
+                            (prof or {}).get("name"), (prof or {}).get("avatar"))
+    who = f"\nAkkaunt: <b>{_esc(prof['name'])}</b>" if prof and prof.get("name") else ""
+    await update.message.reply_text(f"✅ Steam Trade URL saqlandi!{who}", parse_mode="HTML")
 
 
 # ── To'lovlar (Telegram Stars) ────────────────────────────────────────
@@ -190,77 +197,103 @@ async def on_error(update: object, ctx: ContextTypes.DEFAULT_TYPE):
     logger.error("Bot xatosi", exc_info=ctx.error)
 
 
-# ── Skin rasmlari (admin) ─────────────────────────────────────────────
+# ── Media: rasm va ovozlar (admin) ────────────────────────────────────
 
-_IMAGE_KEYS = set(SKINS) | {"case_" + c["id"] for c in CASE_LIST}
-_MAX_IMAGE_BYTES = 3 * 1024 * 1024
-
-
-def _resolve_image_key(text: str) -> str | None:
-    t = (text or "").strip()
-    if t.lower() in _IMAGE_KEYS:
-        return t.lower()
-    return key_by_name(t)
+def _resolve_key(text: str) -> str | None:
+    from app import media
+    t = (text or "").strip().split()[0].lower() if (text or "").strip() else ""
+    if t in media.ALL_KEYS:
+        return t
+    return key_by_name(text or "")
 
 
-async def on_admin_image(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """Admin rasm yuboradi, izohiga skin kaliti yoki nomini yozadi."""
+async def on_admin_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Admin rasm yoki ovoz yuboradi, izohiga kalitni yozadi."""
+    from app import media
+    from app.images import forget
+
     if not _is_admin(update):
         return
     msg = update.message
-    key = _resolve_image_key(msg.caption or "")
+    is_audio = bool(msg.audio or msg.voice or (msg.document and (msg.document.mime_type or "").startswith("audio/")))
+    key = _resolve_key(msg.caption or "")
     if not key:
-        await msg.reply_text(
-            "Rasm izohiga skin kalitini yozing, masalan: <code>awp_asi</code>\n"
-            "Ro'yxat: /skins", parse_mode="HTML")
+        hint = "snd_tick" if is_audio else "awp_asi"
+        await msg.reply_text(f"Izohga kalitni yozing, masalan: <code>{hint}</code>\nRo'yxat: /skins",
+                             parse_mode="HTML")
+        return
+    if is_audio != (key in media.SOUND_KEYS):
+        await msg.reply_text("Bu kalit " + ("ovoz uchun — audio fayl yuboring." if key in media.SOUND_KEYS
+                                            else "rasm uchun — rasm yuboring."))
         return
 
-    if msg.photo:
-        file_obj, mime = msg.photo[-1], "image/jpeg"
-    elif msg.document and (msg.document.mime_type or "").startswith("image/"):
-        file_obj, mime = msg.document, msg.document.mime_type
-    else:
+    file_obj = msg.audio or msg.voice or (msg.photo[-1] if msg.photo else None) or msg.document
+    limit = media.MAX_SOUND_IN if is_audio else media.MAX_IMAGE_IN
+    if file_obj.file_size and file_obj.file_size > limit:
+        await msg.reply_text(f"Fayl juda katta. Ko'pi bilan {limit // 1024 // 1024} MB.")
         return
-    if file_obj.file_size and file_obj.file_size > _MAX_IMAGE_BYTES:
-        await msg.reply_text("Rasm 3 MB dan katta. Kichikroq rasm yuboring.")
+    data = bytes(await (await file_obj.get_file()).download_as_bytearray())
+
+    try:
+        if is_audio:
+            mime = media.check_sound(data, getattr(file_obj, "mime_type", "") or "")
+            info = f"{max(1, len(data) // 1024)} KB"
+        else:
+            src_kb = len(data) // 1024
+            data, mime = await asyncio.to_thread(media.normalize_image, data, key)
+            info = f"{src_kb} KB → {len(data) // 1024} KB, avtomatik moslandi"
+    except ValueError as e:
+        await msg.reply_text({"too_big": "Fayl juda katta.", "not_image": "Bu rasm emas yoki fayl buzilgan.",
+                              "not_audio": "Bu ovoz fayli emas. MP3 yoki OGG yuboring."}.get(str(e), "Xato fayl."))
         return
 
-    tg_file = await file_obj.get_file()
-    data = bytes(await tg_file.download_as_bytearray())
     await asyncio.to_thread(dbm.save_skin_image, key, data, mime)
-    from app.images import forget
     forget(key)
-    name = SKINS[key][0] if key in SKINS else key
-    await msg.reply_text(f"✅ Rasm saqlandi: <b>{_esc(name)}</b> (<code>{key}</code>)", parse_mode="HTML")
+    label = (media.SOUNDS.get(key) or (SKINS[key][0] if key in SKINS else key))
+    await msg.reply_text(f"✅ Saqlandi: <b>{_esc(label)}</b> (<code>{key}</code>)\n{info}\n"
+                         "Ilovani qayta ochsangiz ko'rinadi.", parse_mode="HTML")
 
 
 async def cmd_skins(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from app import media
     if not _is_admin(update):
         return
-    have = await asyncio.to_thread(dbm.image_keys)
-    lines = ["<b>Skinlar</b> (✅ rasm bor, ▫️ yo'q)\n"]
-    for k, (name, _, value) in SKINS.items():
-        lines.append(f"{'✅' if k in have else '▫️'} <code>{k}</code> — {_esc(name)} · {value}⭐")
-    lines.append("\n<b>Case rasmlari</b>")
-    for c in CASE_LIST:
-        k = "case_" + c["id"]
-        lines.append(f"{'✅' if k in have else '▫️'} <code>{k}</code> — {_esc(c['name'])}")
-    lines.append("\nRasm yuborib, izohiga kalitni yozing. PNG (fonsiz) uchun — fayl sifatida yuboring.\n"
-                 "O'chirish: <code>/delimg kalit</code>")
-    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+    have = await asyncio.to_thread(dbm.image_keys) | media.static_keys()
+    mark = lambda k: "✅" if k in have else "▫️"  # noqa: E731
+
+    parts = ["<b>Qurollar</b> (✅ bor, ▫️ yo'q)"]
+    parts += [f"{mark(k)} <code>{k}</code> — {_esc(n)}" for k, (n, _, _v) in SKINS.items()]
+    parts += ["", "<b>Case'lar</b>"] + [f"{mark('case_' + c['id'])} <code>case_{c['id']}</code> — {_esc(c['name'])}"
+                                        for c in CASE_LIST]
+    parts += ["", "<b>O'yinlar</b>"] + [f"{mark('game_' + g)} <code>game_{g}</code> — {n}" for g, n in media.GAMES.items()]
+    parts += ["", "<b>Ovozlar</b> (MP3/OGG, 2 MB gacha)"] + [f"{mark(k)} <code>{k}</code> — {d}"
+                                                            for k, d in media.SOUNDS.items()]
+    parts += ["", "Rasm yoki ovoz yuborib, izohiga kalitni yozing.",
+              "O'chirish: <code>/delimg kalit</code>"]
+    text = "\n".join(parts)
+    for i in range(0, len(text), 3800):  # Telegram xabar chegarasi
+        await update.message.reply_text(text[i:i + 3800], parse_mode="HTML")
 
 
 async def cmd_delimg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from app.images import forget
     if not _is_admin(update):
         return
-    key = _resolve_image_key(" ".join(ctx.args or []))
+    key = _resolve_key(" ".join(ctx.args or []))
     if not key:
         await update.message.reply_text("Format: /delimg awp_asi")
         return
     ok = await asyncio.to_thread(dbm.delete_skin_image, key)
-    from app.images import forget
     forget(key)
-    await update.message.reply_text("🗑 O'chirildi" if ok else "Bu kalit uchun rasm yo'q")
+    await update.message.reply_text("🗑 O'chirildi" if ok else "Bu kalit uchun fayl yo'q")
+
+
+async def cmd_myid(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    status = "✅ Siz adminsiz" if _is_admin(update) else (
+        "❌ Admin emassiz.\nRender → Environment → <code>ADMIN_CHAT_ID</code> ga shu raqamni yozing va qayta deploy qiling."
+        if ADMIN_CHAT_ID else "⚠️ ADMIN_CHAT_ID hali sozlanmagan.")
+    await update.message.reply_text(f"Sizning Telegram ID: <code>{uid}</code>\n{status}", parse_mode="HTML")
 
 
 async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -271,9 +304,10 @@ async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/pending — Steam so'rovlari\n"
         "/confirm_ID — yuborildi\n"
         "/reject_ID sabab — rad etish (skin qaytadi)\n"
-        "/skins — rasmlar ro'yxati\n"
-        "Rasm + izohda kalit — rasm yuklash\n"
-        "/delimg kalit — rasmni o'chirish",
+        "/skins — rasm va ovoz kalitlari ro'yxati\n"
+        "Rasm/ovoz + izohda kalit — yuklash\n"
+        "/delimg kalit — o'chirish\n"
+        "/myid — Telegram ID",
         parse_mode="HTML")
 
 
@@ -298,8 +332,10 @@ def build_app() -> Application:
     application.add_handler(CommandHandler("skins", cmd_skins))
     application.add_handler(CommandHandler("delimg", cmd_delimg))
     application.add_handler(CommandHandler("admin", cmd_admin_help))
+    application.add_handler(CommandHandler("myid", cmd_myid))
     application.add_handler(MessageHandler(
-        filters.ChatType.PRIVATE & (filters.PHOTO | filters.Document.IMAGE), on_admin_image))
+        filters.ChatType.PRIVATE & (filters.PHOTO | filters.Document.IMAGE | filters.AUDIO
+                                    | filters.VOICE | filters.Document.AUDIO), on_admin_media))
     application.add_handler(MessageHandler(filters.Regex(_ADMIN_RE), cmd_admin_action))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
