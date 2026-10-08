@@ -29,15 +29,18 @@ SOUNDS = {
     "snd_ambient": "Yuklanish ekranidagi fon ovozi (takrorlanadi)",
     "snd_click":   "Tugmalar bosilganda",
     "snd_lose":    "O'yinda yutqazganda",
+    "snd_fly":     "Crash: samolyot uchayotganda (takrorlanadi)",
+    "snd_crash":   "Crash: samolyot uchib ketganda",
+    "snd_cashout": "Crash: pul yechib olinganda",
 }
 
-IMAGE_KEYS = set(SKINS) | {"case_" + c["id"] for c in CASE_LIST} | {"game_" + g for g in GAMES} | {"logo"}
+IMAGE_KEYS = set(SKINS) | {"case_" + c["id"] for c in CASE_LIST} | {"game_" + g for g in GAMES} | {"logo", "crash_plane"}
 SOUND_KEYS = set(SOUNDS)
 ALL_KEYS = IMAGE_KEYS | SOUND_KEYS
 
 MAX_IMAGE_IN = 10 * 1024 * 1024
 MAX_SOUND_IN = 2 * 1024 * 1024
-_MAX_SIDE = {"skin": 640, "case": 720, "game": 900, "logo": 512}
+_MAX_SIDE = {"skin": 640, "case": 720, "game": 900, "logo": 512, "plane": 420}
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "images")
 STATIC_EXT = {".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -54,6 +57,8 @@ def kind(key: str) -> str:
         return "game"
     if key == "logo":
         return "logo"
+    if key == "crash_plane":
+        return "plane"
     return "skin"
 
 

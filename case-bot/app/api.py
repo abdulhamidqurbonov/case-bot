@@ -3,10 +3,12 @@
 Eslatma: DB bilan ishlaydigan oddiy endpointlar `def` (async emas) — FastAPI ularni
 alohida thread'da bajaradi va server bloklanmaydi.
 """
+import asyncio
 import hashlib
 import hmac
 import json
 import logging
+import math
 import time
 from urllib.parse import parse_qsl
 
@@ -20,7 +22,7 @@ from app.config import (
     ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME, CONTRACT_RTP_PERCENT,
     CRASH_RTP_PERCENT, DICE_RTP_PERCENT, FREE_CASE_COOLDOWN_H, INIT_DATA_MAX_AGE_S,
     MAX_BET, MAX_WIN, MIN_BET, MIN_WITHDRAW_VALUE, REFERRAL_BONUS_STARS, SELL_RATE_PERCENT, TASK_BONUS_STARS,
-    UPGRADE_RTP_PERCENT, WITHDRAW_NEEDS_DEPOSIT,
+    UPGRADE_RTP_PERCENT, WITHDRAW_ENABLED, WITHDRAW_MIN_DEPOSIT,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,9 +126,13 @@ class ContractBody(Body):
     ids: list[int] = Field(min_length=1, max_length=20)
 
 
-class CrashBody(Body):
+class CrashStartBody(Body):
     bet: int
-    target: float
+    auto: float | None = None
+
+
+class CrashRoundBody(Body):
+    roundId: int
 
 
 class DiceBody(Body):
@@ -170,10 +176,18 @@ def me_out(u: dict) -> dict:
         "steamUrl":        u.get("steam_trade_url") or "",
         "steam":           steam_out(u),
         "deposits":        u.get("deposits", 0),
+        "deposited":       u.get("deposited", 0),
     }
 
 
+def withdraw_enabled() -> bool:
+    """Steam'ga chiqarish ochiqmi. Admin bot orqali /withdraw_on, /withdraw_off bilan boshqaradi."""
+    v = dbm.get_setting("withdraw_enabled")
+    return bool(WITHDRAW_ENABLED) if v is None else v == "1"
+
+
 def _me(user: dict) -> dict:
+    dbm.crash_settle(user["id"], games.CRASH_K)   # avto-yechish yutuqlarini hisobga o'tkazadi
     return me_out(dbm.get_me(user["id"], user.get("username"), user.get("first_name"),
                              FREE_CASE_COOLDOWN_H))
 
@@ -203,7 +217,8 @@ def api_bootstrap(body: Body):
         "config": {
             "minBet": MIN_BET, "maxBet": MAX_BET, "maxWin": MAX_WIN,
             "sellRate": SELL_RATE_PERCENT, "minWithdraw": MIN_WITHDRAW_VALUE,
-            "withdrawNeedsDeposit": bool(WITHDRAW_NEEDS_DEPOSIT),
+            "withdrawEnabled": withdraw_enabled(), "withdrawMinDeposit": WITHDRAW_MIN_DEPOSIT,
+            "crashK": games.CRASH_K, "crashMax": games.CRASH_MAX,
             "upgradeRtp": UPGRADE_RTP_PERCENT, "upgradeMaxChance": games.UPGRADE_MAX_CHANCE,
             "contractRtp": CONTRACT_RTP_PERCENT, "contractMin": games.CONTRACT_MIN,
             "contractMax": games.CONTRACT_MAX, "crashRtp": CRASH_RTP_PERCENT,
@@ -272,7 +287,7 @@ async def api_withdraw(body: ItemBody):
     user = auth(body.initData)
     req = await run_in_threadpool(
         game_call, dbm.create_withdraw_request, user["id"], body.inventoryId,
-        MIN_WITHDRAW_VALUE, bool(WITHDRAW_NEEDS_DEPOSIT))
+        MIN_WITHDRAW_VALUE, WITHDRAW_MIN_DEPOSIT, withdraw_enabled())
 
     if ADMIN_CHAT_ID:
         uname = ("@" + user["username"]) if user.get("username") else f"id {user['id']}"
@@ -350,10 +365,39 @@ def api_contract(body: ContractBody):
     return _game(games.contract, user["id"], body.ids)
 
 
-@router.post("/crash")
-def api_crash(body: CrashBody):
+@router.post("/crash/start")
+def api_crash_start(body: CrashStartBody):
     user = auth(body.initData)
-    return _game(games.crash, user["id"], body.bet, body.target)
+    return game_call(games.crash_start, user["id"], body.bet, body.auto)
+
+
+@router.post("/crash/cashout")
+def api_crash_cashout(body: CrashRoundBody):
+    user = auth(body.initData)
+    return game_call(games.crash_cashout, user["id"], body.roundId)
+
+
+@router.post("/crash/wait")
+async def api_crash_wait(body: CrashRoundBody):
+    """Samolyot uchib ketguncha kutadi va natijani qaytaradi (crash nuqtasi oldindan oshkor qilinmaydi)."""
+    user = auth(body.initData)
+    deadline = time.monotonic() + 80
+    while True:
+        r = await run_in_threadpool(dbm.crash_round, user["id"], body.roundId)
+        if not r:
+            raise HTTPException(status_code=400, detail="round_not_found")
+        if r["status"] != "live":
+            break
+        remaining = math.log(float(r["crash"])) / games.CRASH_K - r["elapsed"]
+        if remaining <= 0 or time.monotonic() > deadline:
+            break
+        await asyncio.sleep(min(remaining + 0.03, 20))
+    return await run_in_threadpool(game_call, dbm.crash_result, user["id"], body.roundId, games.CRASH_K)
+
+
+@router.get("/crash/history")
+def api_crash_history():
+    return {"history": dbm.crash_history()}
 
 
 @router.post("/dice")

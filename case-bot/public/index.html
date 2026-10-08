@@ -158,16 +158,44 @@ img{display:block;max-width:100%}
 .ring .needle::before{content:"";position:absolute;left:50%;top:-4px;margin-left:-8px;border:8px solid transparent;border-top:14px solid var(--text);filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
 
 /* ── crash ── */
-.crash{position:relative;height:220px;background:var(--bg2);border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.crash{position:relative;height:clamp(190px,32vh,250px);background:#0d0507;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);margin:0 -4px}
 .crash canvas{position:absolute;inset:0;width:100%;height:100%}
-.crash .mx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-.crash .mx b{font-family:var(--disp);font-size:56px;line-height:1;transition:color .2s}
-.crash .mx span{font-weight:600;margin-top:4px;min-height:21px}
+.crash .mx{position:absolute;left:0;right:0;top:30px;display:flex;flex-direction:column;align-items:center;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.6)}
+.crash .mx b{font-family:var(--disp);font-size:60px;line-height:1;font-variant-numeric:tabular-nums;transition:color .2s}
+.crash .mx span{font-weight:600;font-size:14px;margin-top:6px;min-height:20px;color:var(--mut)}
 .crash.boom .mx b{color:var(--lose)}
+.crash.boom .mx span{color:var(--lose);font-family:var(--disp);font-size:20px;letter-spacing:.08em}
+.crash.cashed .mx b{color:var(--win)}
 .crash.cashed .mx span{color:var(--win)}
-.hist{display:flex;gap:6px;overflow-x:auto;margin:8px 0;scrollbar-width:none}
-.hist span{flex:0 0 auto;padding:3px 9px;border-radius:6px;background:var(--card);font-family:var(--disp);font-size:14px}
-.hist .w{color:var(--win)} .hist .l{color:var(--lose)}
+.crash.boom.cashed .mx b{color:var(--lose)}
+.crash.boom.cashed .mx span{color:var(--win);font-family:var(--body);font-size:14px;letter-spacing:0}
+.crash .prep{position:absolute;left:50%;bottom:22px;width:56%;margin-left:-28%;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;opacity:0;transition:opacity .2s}
+.crash .prep i{display:block;height:100%;width:100%;background:var(--red2);transform-origin:left;transform:scaleX(0)}
+.crash.waiting .prep{opacity:1}
+.hist{display:flex;gap:6px;overflow-x:auto;margin:10px 0 8px;scrollbar-width:none}
+.hist::-webkit-scrollbar{display:none}
+.hist span{flex:0 0 auto;padding:3px 10px;border-radius:999px;background:var(--card);font-family:var(--disp);font-size:14px;color:#8fb0ff}
+.hist .x2{color:#b38bff} .hist .x10{color:var(--gold)}
+.cr-panel{background:var(--card);border-radius:var(--r-lg);padding:12px;border:1px solid var(--line)}
+.cr-row{display:flex;gap:8px;align-items:stretch}
+.cr-row .field{flex:1;background:var(--bg2)}
+.cr-auto{display:flex;align-items:center;gap:10px;margin:10px 0 2px}
+.sw{position:relative;width:44px;height:26px;border-radius:13px;background:var(--card2);flex:0 0 auto;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw.on{background:var(--red)} .sw.on::after{transform:translateX(18px)}
+.cr-auto .field{padding:4px 10px;background:var(--bg2);opacity:.45;transition:opacity .2s}
+.cr-auto.on .field{opacity:1}
+.cr-auto .field input{font-size:18px}
+.crbtn{flex:0 0 52%;width:auto;height:auto;min-height:60px;flex-direction:column;gap:0;line-height:1.05;font-size:19px}
+.cr-auto .field{flex:0 0 76px}
+.cr-auto .field input{font-size:16px!important}
+.cr-auto .chips{flex:1;min-width:0;scrollbar-width:none}
+.cr-auto .chips::-webkit-scrollbar{display:none}
+body.focus .feed{display:none}
+body.focus #sc-crash .gbanner{display:none}
+.crbtn small{font-family:var(--body);font-size:13px;font-weight:600;opacity:.85}
+.crbtn.cash{background:#f39c12;color:#1b0f00;box-shadow:0 6px 24px -8px rgba(243,156,18,.7)}
+.crbtn.wait{background:var(--card2);color:var(--mut);box-shadow:none}
 
 /* ── dice ── */
 .dice-num{font-family:var(--disp);font-size:64px;text-align:center;line-height:1.1;margin:10px 0 4px}
@@ -239,6 +267,10 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 .mock .url{flex:1;min-width:0;background:#1b2130;border-radius:4px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,monospace;font-size:11px}
 .mock .cp{background:#3b6fd8;color:#fff;border-radius:4px;padding:6px 10px;font-weight:600;box-shadow:0 0 0 3px rgba(227,36,43,.6);animation:hl 1.6s ease-in-out infinite}
 @keyframes hl{50%{box-shadow:0 0 0 6px rgba(227,36,43,.15)}}
+.wd-note{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--mut);text-align:left}
+.wd-note b{color:var(--text)}
+.dep{height:8px;border-radius:4px;background:var(--card2);overflow:hidden;margin-top:8px}
+.dep i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--gold));border-radius:4px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
 .g-note{margin-top:12px;background:rgba(240,180,60,.08);border:1px solid rgba(240,180,60,.25);border-radius:10px;padding:10px 12px;font-size:13px;color:#e9d3a4}
 .g-note b{color:var(--gold)}
 .g-open{margin-top:14px}
@@ -409,17 +441,23 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 <!-- CRASH -->
 <section class="screen" id="sc-crash">
   <button class="back" data-back>‹ O'yinlar</button>
-  <div class="h1" style="margin-top:0">Crash</div>
-  <div class="crash" id="crBox"><canvas id="crCanvas"></canvas><div class="mx"><b id="crMx">1.00x</b><span id="crMsg"></span></div></div>
-  <div class="hist" id="crHist"></div>
-  <div class="two">
-    <div class="field"><label>Stavka ⭐</label><input id="crBet" type="number" inputmode="numeric" value="10"></div>
-    <div class="field"><label>Avto-yechish x</label><input id="crTarget" type="number" inputmode="decimal" step="0.01" value="2.00"></div>
+  <div class="crash" id="crBox"><canvas id="crCanvas"></canvas>
+    <div class="mx"><b id="crMx">1.00x</b><span id="crMsg">Stavka qo'ying va samolyotni uchiring</span></div>
+    <div class="prep"><i id="crPrep"></i></div></div>
+  <div class="hist" id="crHist" aria-label="Oxirgi raundlar"></div>
+  <div class="cr-panel">
+    <div class="cr-row">
+      <div class="field"><label>Stavka ⭐</label><input id="crBet" type="number" inputmode="numeric" value="10"></div>
+      <button class="btn crbtn" id="crBtn">Stavka qo'yish<small id="crBtnSub">10 ⭐</small></button>
+    </div>
+    <div class="chips" data-bet="crBet"></div>
+    <div class="cr-auto" id="crAutoRow">
+      <button class="sw" id="crAutoSw" role="switch" aria-checked="false" aria-label="Avto-yechish"></button>
+      <span style="font-weight:600;font-size:14px;white-space:nowrap">Avto x</span>
+      <div class="field"><input id="crTarget" type="number" inputmode="decimal" step="0.01" value="2.00" aria-label="Avto-yechish koeffitsiyenti"></div>
+      <div class="chips" id="crTchips" style="margin:0;flex-wrap:nowrap;overflow-x:auto"></div>
+    </div>
   </div>
-  <div class="chips" data-bet="crBet"></div>
-  <div class="chips" id="crTchips"></div>
-  <div style="height:12px"></div>
-  <button class="btn" id="crBtn">O'ynash</button>
 </section>
 
 <!-- DICE -->
@@ -488,7 +526,8 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
     <div class="ref"><input id="refLink" readonly><button id="refCopy">Nusxa</button><button id="refShare">Ulashish</button></div></div>
 
   <div id="taskBox"></div>
-  <div class="h2">Chiqarish so'rovlari</div><div class="list" id="wdList"></div>
+  <div class="h2">Steam'ga chiqarish</div><div id="wdStatus"></div>
+  <div class="list" id="wdList" style="margin-top:8px"></div>
   <div class="h2">O'yinlar tarixi</div><div class="list" id="histList"></div>
   <div class="h2">Hafta yetakchilari</div><div class="list" id="lbList"></div>
 </section>
@@ -537,7 +576,11 @@ const ERR = {
   free_case_cooldown: "Bepul case hali tayyor emas",
   item_not_found: "Skin topilmadi. Inventar yangilandi",
   no_steam_url: "Avval Profilda Steam Trade URL kiriting",
-  deposit_required: "Skin chiqarish uchun kamida bitta to'lov qilgan bo'lishingiz kerak",
+  deposit_required: () => `Steam'ga chiqarish uchun jami kamida ${fmt(S.cfg.withdrawMinDeposit)} ⭐ to'lov qilgan bo'lishingiz kerak (sizda: ${fmt(S.me.deposited || 0)} ⭐)`,
+  withdraw_disabled: "Steam'ga chiqarish tez orada ochiladi. Hozircha skinni sotishingiz mumkin",
+  round_active: "Oldingi raund hali tugamadi",
+  round_not_found: "Raund topilmadi",
+  not_started: "Samolyot hali uchmadi",
   value_too_low: () => `Chiqarish uchun skin qiymati kamida ${fmt(S.cfg.minWithdraw)} ⭐ bo'lishi kerak`,
   bet_too_low: () => `Minimal stavka ${fmt(S.cfg.minBet)} ⭐`,
   bet_too_high: () => `Maksimal stavka ${fmt(S.cfg.maxBet)} ⭐`,
@@ -616,6 +659,7 @@ const CHILD = { case: 'cases', upgrade: 'games', contract: 'games', crash: 'game
 function show(sc) {
   document.querySelectorAll('.screen').forEach(e => e.classList.toggle('on', e.id === 'sc-' + sc));
   S.cur = sc; window.scrollTo(0, 0);
+  document.body.classList.toggle('focus', sc === 'crash');
   try { CHILD[sc] ? tg?.BackButton?.show() : tg?.BackButton?.hide(); } catch (e) {}
 }
 function tab(t) {
@@ -637,7 +681,7 @@ function openGame(g) {
   show(g);
   if (g === 'upgrade') renderUp();
   if (g === 'contract') { S.ct.clear(); if (S.inv) renderCt(); loadInv().then(renderCt); }
-  if (g === 'crash') drawCrash(1, 2, false);
+  if (g === 'crash') crashEnter();
   if (g === 'dice') renderDice();
 }
 
@@ -843,11 +887,14 @@ $('sellAll').addEventListener('click', async () => {
 
 function itemSheet(id) {
   const it = (S.inv || []).find(i => i.id === id); if (!it) return;
-  const canWd = it.value >= S.cfg.minWithdraw;
+  const open = S.cfg.withdrawEnabled, needDep = Math.max(0, S.cfg.withdrawMinDeposit - (S.me.deposited || 0));
+  const canWd = open && !needDep && it.value >= S.cfg.minWithdraw;
+  const note = !open ? `<div class="wd-note"><b>Steam'ga chiqarish tez orada ochiladi.</b> Hozircha skinni sotishingiz yoki o'yinlarda ishlatishingiz mumkin.</div>`
+    : needDep ? `<div class="wd-note">Chiqarish uchun jami <b>${fmt(S.cfg.withdrawMinDeposit)} ⭐</b> to'lov qilgan bo'lishingiz kerak. Yana <b>${fmt(needDep)} ⭐</b> qoldi.${depBar()}</div>`
+    : it.value < S.cfg.minWithdraw ? `<div class="wd-note">Chiqarish uchun kamida ${fmt(S.cfg.minWithdraw)} ⭐ qiymatli skin kerak.</div>` : '';
   openSheet(`${bigHTML(it)}
     <div class="btns" style="margin-bottom:8px"><button class="btn green" id="isSell">Sotish +${fmt(it.sell)} ⭐</button><button class="btn ghost" id="isUp">Upgrade</button></div>
-    <button class="btn ${canWd ? '' : 'ghost'}" id="isWd">Steam'ga chiqarish</button>
-    ${canWd ? '' : `<div class="mut" style="text-align:center;font-size:13px;margin-top:8px">Chiqarish uchun kamida ${fmt(S.cfg.minWithdraw)} ⭐ qiymatli skin kerak</div>`}`);
+    <button class="btn ${canWd ? '' : 'ghost'}" id="isWd">${open ? "Steam'ga chiqarish" : "Steam'ga chiqarish · tez orada"}</button>${note}`);
   $('isSell').onclick = async () => {
     $('isSell').disabled = true;
     const r = await api('/api/sell', { ids: [id] });
@@ -856,6 +903,8 @@ function itemSheet(id) {
   };
   $('isUp').onclick = () => { closeSheet(); S.up = { from: it, to: null }; openGame('upgrade'); };
   $('isWd').onclick = async () => {
+    if (!open) return err('withdraw_disabled');
+    if (needDep) { closeSheet(); return openShop(); }
     if (!canWd) return err('value_too_low');
     if (!S.me.steamUrl) { closeSheet(); err('no_steam_url'); tab('prof'); setTimeout(() => $('steamUrl').focus(), 300); return; }
     if (!await confirmBox(`${it.name} Steam'ga yuborilsinmi?\nTrade URL: ${S.me.steamUrl}`)) return;
@@ -986,60 +1035,179 @@ function readBet(id) {
   return v;
 }
 
-/* ── Crash ────────────────────────────────────────── */
-const cv = $('crCanvas');
-function drawCrash(m, crashAt, boom) {
-  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
-  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  const pad = 16, top = Math.max(2, m * 1.25), L = Math.log(Math.max(crashAt, 1.0001));
-  const p = Math.log(Math.max(m, 1)) / L;
-  g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
-  for (let i = 1; i < 4; i++) { const y = pad + (H - 2 * pad) * i / 4; g.beginPath(); g.moveTo(pad, y); g.lineTo(W - pad, y); g.stroke(); }
-  if (m <= 1) return;
-  const pts = [];
-  for (let i = 0; i <= 60; i++) {
-    const q = p * i / 60, mm = Math.exp(L * q);
-    pts.push([pad + (W - 2 * pad) * (q / Math.max(p, 0.25)) * 0.92, H - pad - (H - 2 * pad) * (mm - 1) / (top - 1)]);
-  }
-  const col = boom ? '#ff4d55' : '#ff3d43';
-  const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, 'rgba(227,36,43,.35)'); grd.addColorStop(1, 'rgba(227,36,43,0)');
-  g.beginPath(); g.moveTo(pts[0][0], H - pad); pts.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(pts[pts.length - 1][0], H - pad); g.closePath(); g.fillStyle = grd; g.fill();
-  g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.strokeStyle = col; g.lineWidth = 3; g.lineJoin = 'round'; g.stroke();
-  const [lx, ly] = pts[pts.length - 1]; g.beginPath(); g.arc(lx, ly, 5, 0, 7); g.fillStyle = col; g.fill();
+/* ── Crash (samolyot) ─────────────────────────────────
+   Server raund ochadi va crash nuqtasini sir saqlaydi. Koeffitsiyent m(t)=e^(k·t)
+   ikkala tomonda bir xil hisoblanadi; «Yechib olish» natijasini server belgilaydi. */
+const PLANE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a6f"/><stop offset="1" stop-color="#b3141b"/></linearGradient></defs><path d="M8 30L19 12h9l3 14z" fill="#8f0f15"/><path d="M10 32C30 22 70 19 96 23c10 2 14 7 12 11-4 6-38 8-78 6-12-1-20-4-20-8z" fill="url(#b)"/><path d="M44 33h27l-12 20H46z" fill="#7a0c11"/><path d="M19 31h15l-4 5H15z" fill="#7a0c11"/><path d="M72 25c8-3 18-2 22 2l-20 2z" fill="#ffe6e6" opacity=".92"/><path d="M30 29h40" stroke="#ff9a9e" stroke-width="1.5" opacity=".6"/><circle cx="108" cy="31" r="4" fill="#ffd0d0"/></svg>`;
+const plane = new Image(); plane.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(PLANE_SVG);
+const cv = $('crCanvas'), cx = cv.getContext('2d');
+const CR = { state: 'idle', round: null, bet: 0, auto: null, takeoff: 0, crash: null, cash: null, payout: 0,
+             flyAway: 0, raf: 0, hist: [], m: 1, cashing: false, rays: 0, last: 0 };
+const crK = () => S.cfg.crashK || 0.09;
+
+function crSize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0); return [W, H];
 }
-const crHist = [];
-$('crTchips').innerHTML = [1.5, 2, 3, 5, 10, 100].map(x => `<button data-t="${x}">${x}x</button>`).join('');
-$('crTchips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('crTarget').value = (+b.dataset.t).toFixed(2); haptic(); }));
-$('crBtn').addEventListener('click', async () => {
-  if (S.busy) return;
+// Sahnani chizish: aylanuvchi nurlar, egri chiziq, samolyot
+function crDraw(now) {
+  const [W, H] = crSize(), k = crK(), padL = 18, padB = 26;
+  const active = CR.state === 'flying' || CR.state === 'crashed' || (CR.state === 'idle' && CR.endAt);
+  const el = active ? Math.max(0, (Math.min(now, CR.endAt || now) - CR.takeoff) / 1000) : 0;
+  cx.clearRect(0, 0, W, H);
+  // nurlar (pastki chap burchakdan)
+  CR.rays += (CR.state === 'flying' ? 0.0022 : 0.0006) * (now - (CR.last || now)); CR.last = now;
+  cx.save(); cx.translate(padL, H - padB);
+  for (let i = 0; i < 14; i++) {
+    const a0 = -Math.PI / 2 + ((i / 14) * Math.PI * 0.5) + (CR.rays % (Math.PI / 14) * (i % 2 ? 1 : 1));
+    cx.beginPath(); cx.moveTo(0, 0); cx.arc(0, 0, W * 1.6, a0, a0 + Math.PI / 56); cx.closePath();
+    cx.fillStyle = i % 2 ? 'rgba(227,36,43,.05)' : 'rgba(255,255,255,.018)'; cx.fill();
+  }
+  cx.restore();
+  // o'qlar
+  cx.strokeStyle = 'rgba(255,255,255,.08)'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(padL, 8); cx.lineTo(padL, H - padB); cx.lineTo(W - 8, H - padB); cx.stroke();
+  const tMax = Math.max(8, el * 1.18), mMax = Math.max(1.8, Math.exp(k * el) * 1.15), topY = Math.min(112, H * 0.46);
+  const X = t => padL + (W - padL - 70) * (t / tMax), Y = m => H - padB - (H - padB - topY) * ((m - 1) / (mMax - 1));
+  cx.fillStyle = 'rgba(255,255,255,.28)'; cx.font = '600 10px Barlow, system-ui'; cx.textAlign = 'center';
+  for (let i = 1; i <= 4; i++) { const t = tMax * i / 4; cx.fillText(Math.round(t) + 's', X(t), H - padB + 15); }
+  let px = padL, py = H - padB, ang = 0;
+  if (el > 0) {
+    const n = 48, pts = [];
+    for (let i = 0; i <= n; i++) { const t = el * i / n; pts.push([X(t), Y(Math.exp(k * t))]); }
+    const grd = cx.createLinearGradient(0, 30, 0, H - padB); grd.addColorStop(0, 'rgba(227,36,43,.55)'); grd.addColorStop(1, 'rgba(227,36,43,.04)');
+    cx.beginPath(); cx.moveTo(pts[0][0], H - padB); pts.forEach(([x, y]) => cx.lineTo(x, y)); cx.lineTo(pts[n][0], H - padB); cx.closePath(); cx.fillStyle = grd; cx.fill();
+    cx.beginPath(); pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y));
+    cx.strokeStyle = CR.state === 'crashed' ? '#ff4d55' : '#ff3d43'; cx.lineWidth = 4; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.stroke();
+    [px, py] = pts[n]; const [qx, qy] = pts[n - 3];
+    ang = Math.max(-0.75, Math.min(0, Math.atan2(py - qy, px - qx)));
+  }
+  // samolyot
+  let fx = 0, fy = 0, alpha = 1;
+  if (CR.endAt) { const f = Math.min(1, (now - CR.endAt) / 900); fx = f * f * W; fy = -f * f * H * 0.7; alpha = 1 - f; ang = -0.5; }
+  const bob = CR.state === 'flying' ? Math.sin(now / 180) * 2 : 0;
+  if (alpha > 0) {
+    const img = CR.planeImg && CR.planeImg.complete && CR.planeImg.naturalWidth ? CR.planeImg : plane;
+    const pw = 84, ph = pw * (img.naturalHeight / img.naturalWidth || 0.5);
+    cx.save(); cx.globalAlpha = alpha; cx.translate(px + fx, py + fy + bob - 4); cx.rotate(ang);
+    cx.drawImage(img, -pw * 0.62, -ph * 0.72, pw, ph);
+    if (img === plane) {                                  // aylanayotgan parrak
+      cx.fillStyle = 'rgba(255,255,255,.32)'; cx.beginPath();
+      cx.ellipse(-pw * 0.62 + pw * 0.93, -ph * 0.72 + ph * 0.52, 2.2, ph * (0.18 + 0.12 * Math.abs(Math.sin(now / 25))), 0, 0, 7); cx.fill();
+    }
+    cx.restore();
+  }
+  return el;
+}
+
+function crLoop(now) {
+  const el = crDraw(now), k = crK();
+  if (CR.state === 'waiting') {
+    const left = (CR.takeoff - now) / 1000;
+    $('crPrep').style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - left / (CR.delay || 1.6)))})`;
+    if (left <= 0) { CR.state = 'flying'; $('crBox').classList.remove('waiting'); $('crMsg').textContent = ''; sfx.fly(true); crButton(); }
+  } else if (CR.state === 'flying') {
+    CR.m = Math.min(Math.exp(k * el), S.cfg.crashMax || 500);
+    $('crMx').textContent = CR.m.toFixed(2) + 'x'; sfx.fly(CR.m);
+    if (!CR.cash && CR.round) crButton();
+  }
+  if (CR.state === 'crashed' && now - CR.endAt > 1100) { CR.state = 'idle'; crButton(); }
+  CR.raf = (S.cur === 'crash' || CR.state !== 'idle') ? requestAnimationFrame(crLoop) : 0;
+}
+const crKick = () => { if (!CR.raf) CR.raf = requestAnimationFrame(crLoop); };
+
+function crButton() {
+  const b = $('crBtn'), sub = $('crBtnSub'), bet = parseInt($('crBet').value) || 0;
+  b.classList.remove('cash', 'wait'); b.disabled = false;
+  const set = (t, st) => { b.firstChild.nodeValue = t; sub.textContent = st; };
+  if (CR.state === 'flying' && CR.round && !CR.cash) {
+    b.classList.add('cash'); set(CR.cashing ? 'Yechilmoqda…' : 'Yechib olish', `${fmt(Math.floor(CR.bet * CR.m))} ⭐`);
+    b.disabled = CR.cashing;
+  } else if (CR.state === 'waiting') { b.classList.add('wait'); b.disabled = true; set('Tayyorlanmoqda…', `${fmt(CR.bet)} ⭐ stavka`); }
+  else if (CR.state === 'flying' || CR.state === 'crashed') { b.classList.add('wait'); b.disabled = true; set('Kuting…', CR.cash ? `+${fmt(CR.payout)} ⭐ yutdingiz` : 'raund tugayapti'); }
+  else set("Stavka qo'yish", `${fmt(bet)} ⭐`);
+}
+
+function crHistRender() {
+  setHTML($('crHist'), CR.hist.slice(0, 20).map(x => `<span class="${x >= 10 ? 'x10' : x >= 2 ? 'x2' : ''}">${x.toFixed(2)}x</span>`).join(''));
+}
+async function crashEnter() {
+  crKick(); crButton();
+  const pk = 'crash_plane';
+  if (S.media.has(pk) && !CR.planeImg) { CR.planeImg = new Image(); CR.planeImg.src = mediaUrl(pk); }
+  const h = await api('/api/crash/history'); if (h.history) { CR.hist = h.history; crHistRender(); }
+}
+
+async function crStart() {
   const bet = readBet('crBet'); if (!bet) return;
-  const target = Math.round(parseFloat($('crTarget').value) * 100) / 100;
-  if (!(target >= 1.01 && target <= 1000)) return err('bad_target');
-  S.busy = true; const b = $('crBtn'); b.disabled = true; b.textContent = 'Uchmoqda…';
-  const box = $('crBox'); box.classList.remove('boom', 'cashed'); $('crMsg').textContent = ''; haptic('medium');
-  setBal(S.me.balance - bet);
-  const r = await api('/api/crash', { bet, target });
-  if (r.error) { S.busy = false; b.disabled = false; b.textContent = "O'ynash"; err(r.error); refreshMe(); return; }
-  const crash = r.crash, dur = Math.min(9000, 900 + Math.log(Math.max(crash, 1.01)) * 2200), t0 = performance.now();
-  let cashed = false;
-  await new Promise(done => {
-    const frame = now => {
-      const p = Math.min(1, (now - t0) / dur), m = Math.exp(Math.log(crash) * p);
-      $('crMx').textContent = m.toFixed(2) + 'x'; drawCrash(m, crash, false);
-      if (r.win && !cashed && m >= target) {
-        cashed = true; box.classList.add('cashed'); $('crMsg').textContent = `${target.toFixed(2)}x da yechildi: +${fmt(r.payout)} ⭐`; notify('success'); sfx.win();
-      }
-      p < 1 ? requestAnimationFrame(frame) : done();
-    };
-    requestAnimationFrame(frame);
-  });
-  $('crMx').textContent = crash.toFixed(2) + 'x'; drawCrash(crash, crash, true); box.classList.add('boom');
-  if (!r.win) { $('crMsg').textContent = `Portladi! −${fmt(bet)} ⭐`; notify('error'); sfx.lose(); }
-  crHist.unshift(`<span class="${r.win ? 'w' : 'l'}">${crash.toFixed(2)}x</span>`); crHist.length = Math.min(crHist.length, 15);
-  $('crHist').innerHTML = crHist.join('');
-  setBal(r.balance); S.busy = false; b.disabled = false; b.textContent = "O'ynash";
+  let auto = null;
+  if ($('crAutoSw').classList.contains('on')) {
+    auto = Math.round(parseFloat($('crTarget').value) * 100) / 100;
+    if (!(auto >= 1.01 && auto <= (S.cfg.crashMax || 500))) return err('bad_target');
+  }
+  S.busy = true; haptic('medium'); sfx.click();
+  const box = $('crBox'); box.classList.remove('boom', 'cashed');
+  Object.assign(CR, { state: 'starting', cash: null, payout: 0, crash: null, endAt: 0, m: 1, cashing: false });
+  $('crMsg').textContent = '';
+  $('crBtn').disabled = true;
+  const t0 = performance.now();
+  const r = await api('/api/crash/start', { bet, auto });
+  if (r.error) { S.busy = false; CR.state = 'idle'; crButton(); err(r.error); return; }
+  const rtt = performance.now() - t0;
+  Object.assign(CR, { state: 'waiting', round: r.roundId, bet, auto, delay: r.startsIn, takeoff: performance.now() + r.startsIn * 1000 - rtt / 2 });
+  setBal(r.balance); $('crMx').textContent = '1.00x'; $('crMsg').textContent = auto ? `Avto-yechish: ${auto.toFixed(2)}x` : '';
+  box.classList.add('waiting'); crButton(); crKick();
+  // Natijani kutamiz (server samolyot uchib ketganda javob beradi)
+  let res = await api('/api/crash/wait', { roundId: r.roundId });
+  for (let i = 0; res.error === 'network' && i < 3; i++) { await sleep(800); res = await api('/api/crash/wait', { roundId: r.roundId }); }
+  crFinish(res);
+}
+
+function crFinish(res) {
+  if (CR.state === 'crashed' || CR.state === 'idle') return;
+  if (res.error) { S.busy = false; CR.state = 'idle'; crButton(); err(res.error); refreshMe(); return; }
+  const now = performance.now();
+  if (CR.state === 'waiting') CR.takeoff = now;           // 1.00x — darhol uchib ketdi
+  CR.crash = res.crash; CR.state = 'crashed'; CR.endAt = now;
+  if (res.cashout && !CR.cash) crWon(res);                 // avto-yechish ishlagan
+  $('crMx').textContent = res.crash.toFixed(2) + 'x';
+  $('crBox').classList.remove('waiting'); $('crBox').classList.add('boom');
+  if (!CR.cash) { $('crBox').classList.remove('cashed'); $('crMsg').textContent = 'UCHIB KETDI'; notify('error'); sfx.lose(); }
+  else $('crMsg').textContent = `Uchib ketdi · siz ${CR.cash.toFixed(2)}x da yechdingiz: +${fmt(CR.payout)} ⭐`;
+  sfx.fly(false); sfx.boom();
+  setBal(res.balance); S.busy = false; CR.round = null;
+  CR.hist.unshift(res.crash); crHistRender(); crButton(); crKick();
+}
+function crWon(res) {
+  CR.cash = res.cashout; CR.payout = res.payout;
+  $('crBox').classList.add('cashed'); $('crMsg').textContent = `${res.cashout.toFixed(2)}x da yechildi · +${fmt(res.payout)} ⭐`;
+  notify('success'); sfx.cashout(); toast(`+${fmt(res.payout)} ⭐`);
+  S.busy = false;                                          // pul olindi — boshqa bo'limga o'tish mumkin
+}
+async function crCashout() {
+  if (CR.cashing || CR.cash || !CR.round) return;
+  CR.cashing = true; crButton(); haptic('heavy');
+  const r = await api('/api/crash/cashout', { roundId: CR.round });
+  CR.cashing = false;
+  if (r.error) { if (r.error !== 'not_started') err(r.error); crButton(); return; }
+  if (r.status === 'cashed' || r.status === 'auto') { crWon(r); setBal(r.balance); crButton(); }
+  else if (r.crash) crFinish(r);
+}
+$('crBtn').addEventListener('click', () => {
+  if (CR.state === 'idle') { if (!S.busy) crStart(); }
+  else if (CR.state === 'flying') crCashout();
 });
+$('crAutoSw').addEventListener('click', () => {
+  const on = !$('crAutoSw').classList.contains('on');
+  $('crAutoSw').classList.toggle('on', on); $('crAutoSw').setAttribute('aria-checked', on); $('crAutoRow').classList.toggle('on', on); haptic();
+});
+$('crBet').addEventListener('input', crButton);
+$('crTchips').innerHTML = [1.5, 2, 3, 5, 10, 100].map(x => `<button data-t="${x}">${x}x</button>`).join('');
+$('crTchips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  $('crTarget').value = (+b.dataset.t).toFixed(2); haptic();
+  if (!$('crAutoSw').classList.contains('on')) $('crAutoSw').click();
+}));
 
 /* ── Dice ─────────────────────────────────────────── */
 const diceMult = ch => Math.floor(S.cfg.diceRtp / ch * 100) / 100;
@@ -1107,7 +1275,19 @@ async function loadProfile() {
   Object.assign(S.prof, { p: p.error ? S.prof.p : p, h: h.error ? S.prof.h : h, w: w.error ? S.prof.w : w, lb: lb.error ? S.prof.lb : lb });
   if (S.cur === 'prof') renderProfile();
 }
+function depBar() {
+  const p = Math.min(100, Math.round((S.me.deposited || 0) / Math.max(1, S.cfg.withdrawMinDeposit) * 100));
+  return `<div class="dep"><i style="width:${p}%"></i></div>`;
+}
+function renderWdStatus() {
+  const need = Math.max(0, S.cfg.withdrawMinDeposit - (S.me.deposited || 0));
+  setHTML($('wdStatus'), !S.cfg.withdrawEnabled
+    ? `<div class="wd-note" style="margin-top:0"><b>Tez orada ochiladi.</b> Yutgan skinlaringiz inventaringizda saqlanadi — chiqarish ochilganda ularni Steam'ga yubora olasiz.</div>`
+    : need ? `<div class="wd-note" style="margin-top:0">Chiqarish uchun jami <b>${fmt(S.cfg.withdrawMinDeposit)} ⭐</b> to'lov kerak: <b>${fmt(S.me.deposited || 0)} / ${fmt(S.cfg.withdrawMinDeposit)} ⭐</b>${depBar()}</div>`
+    : `<div class="wd-note" style="margin-top:0;border-color:#2f8f5b"><b style="color:var(--win)">✓ Ochiq.</b> Inventardan skinni tanlab, «Steam'ga chiqarish» ni bosing.</div>`);
+}
 function renderProfile() {
+  renderWdStatus();
   const { p, h, w, lb } = S.prof;
   if (p) {
     $('pfCases').textContent = fmt(p.casesOpened); $('pfGames').textContent = fmt(p.gamesPlayed); $('pfRefs').textContent = fmt(p.referrals);
@@ -1295,6 +1475,37 @@ const sfx = (() => {
   };
   const lose = () => { if (!ok() || play('lose')) return; const t = ctx.currentTime; tone('sawtooth', 220, 70, t, 0.45, 0.09); tone('sine', 140, 60, t, 0.5, 0.2); };
   const click = () => { if (!ok() || play('click', 0.6)) return; burst(ctx.currentTime, 2400, 2, 0.05, 0.018); };
+  // Crash: dvigatel (tezlik oshgani sari ovoz balandlashadi), portlash, pul yechish
+  let fl = null;
+  function fly(arg) {
+    if (arg === false) { if (fl && ctx) { const f = fl; f.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.15); setTimeout(() => f.stop(), 900); } fl = null; return; }
+    if (arg === true) {
+      if (fl || !ok()) return; const t = ctx.currentTime, g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.connect(master);
+      if (buf.fly) {
+        const src = ctx.createBufferSource(); src.buffer = buf.fly; src.loop = true; src.connect(g); src.start();
+        g.gain.exponentialRampToValueAtTime(0.6, t + 0.4); fl = { g, src, stop: () => { try { src.stop(); } catch (e) {} } }; return;
+      }
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 3; f.connect(g);
+      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+      o1.type = 'sawtooth'; o2.type = 'square'; o1.frequency.value = 72; o2.frequency.value = 145;
+      lfo.frequency.value = 28; lg.gain.value = 6; lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
+      o1.connect(f); o2.connect(f); [o1, o2, lfo].forEach(o => o.start(t));
+      g.gain.exponentialRampToValueAtTime(0.07, t + 0.5);
+      fl = { g, o1, o2, f, stop: () => [o1, o2, lfo].forEach(o => { try { o.stop(); } catch (e) {} }) }; return;
+    }
+    if (!fl || !ctx || typeof arg !== 'number') return;
+    const lm = Math.log(Math.max(1, arg)), t = ctx.currentTime;
+    if (fl.src) fl.src.playbackRate.setTargetAtTime(Math.min(2, 1 + lm * 0.15), t, 0.1);
+    else { fl.o1.frequency.setTargetAtTime(72 * (1 + lm * 0.4), t, 0.1); fl.o2.frequency.setTargetAtTime(145 * (1 + lm * 0.4), t, 0.1); fl.f.frequency.setTargetAtTime(520 + lm * 500, t, 0.1); }
+  }
+  function boom() {
+    if (!ok() || play('crash')) return; const t = ctx.currentTime;
+    burst(t, 700, 0.7, 0.5, 0.7, 'lowpass'); tone('sine', 110, 32, t, 0.7, 0.45); tone('sawtooth', 300, 80, t, 0.35, 0.06);
+  }
+  function cashout() {
+    if (!ok() || play('cashout')) return;
+    chord([1319, 1568, 2093], 0.06, 'triangle', 0.18); burst(ctx.currentTime, 7000, 1, 0.05, 0.25, 'highpass');
+  }
   function reveal(rarity) { ['covert', 'gold'].includes(rarity) ? jackpot() : rarity === 'classified' ? win() : drop(); }
   function clunk() {
     if (!ok() || play('unlock')) return; const t = ctx.currentTime;
@@ -1350,7 +1561,7 @@ const sfx = (() => {
     if (ctx && master) master.gain.setTargetAtTime(v ? 0.9 : 0, ctx.currentTime, 0.05);
     renderSnd();
   }
-  return { tick, dialTick, spin, drop, win, jackpot, lose, click, reveal, clunk, whoosh, ambient, loadCustom, unlockAudio, setOn,
+  return { tick, dialTick, spin, drop, win, jackpot, lose, click, reveal, clunk, whoosh, ambient, fly, boom, cashout, loadCustom, unlockAudio, setOn,
     get on() { return on; }, get running() { return !!ctx && ctx.state === 'running'; } };
 })();
 

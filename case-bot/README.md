@@ -34,7 +34,7 @@ Rasm avtomatik moslanadi: chetdagi bo'sh/bir xil fon kesiladi, 640 px gacha kich
 Ovoz yuklanmagan bo'lsa — ilova o'zining standart ovozini chaladi.
 
 ## Admin buyruqlari
-`/admin` · `/myid` · `/pending` · `/confirm_123` · `/reject_123 sabab` · `/skins` · `/delimg kalit`
+`/admin` · `/myid` · `/stats` · `/withdraw_on` · `/withdraw_off` · `/pending` · `/confirm_123` · `/reject_123 sabab` · `/skins` · `/delimg kalit`
 
 ## Iqtisod
 - Skin qiymati (`catalog.py` → `SKINS`) Stars'da. Sotilsa shuncha Stars qaytadi.
@@ -54,3 +54,15 @@ Bepul tarifda server 15 daqiqa ishlatilmasa uxlaydi va keyingi kirishda Render'n
 1. https://uptimerobot.com → Add New Monitor → HTTP(s)
 2. URL: `https://<servis>.onrender.com/health`, interval: 5 daqiqa
 Bitta servis uchun oylik bepul 750 soat yetadi (24/7 ≈ 744 soat).
+
+## Steam'ga chiqarish qoidalari
+- Boshida YOPIQ (`WITHDRAW_ENABLED=0`). Ilovada «tez orada ochiladi» deb ochiq yoziladi.
+- Ochish/yopish: botda `/withdraw_on` va `/withdraw_off` (deploy kerak emas).
+- O'yinchi jami kamida `WITHDRAW_MIN_DEPOSIT` (500) Stars to'lagan bo'lishi kerak; profilda progress ko'rinadi.
+- `/stats` — tushgan Stars (≈ $), inventarlardagi skinlar qiymati, kutilayotgan so'rovlar.
+- Reja: birinchi 10–20 to'lovdan keyin DMarket'dan skinlar olinadi, shundan so'ng `/withdraw_on`.
+
+## Crash (samolyot)
+Stavka → samolyot uchadi → «Yechib olish» ni bosasiz yoki avto-yechish. Koeffitsiyent m(t)=e^(0.09·t),
+crash nuqtasi serverda yashirin. Samolyot rasmi: botga `crash_plane` kaliti bilan fonsiz PNG (burni o'ngga).
+Ovozlar: `snd_fly`, `snd_crash`, `snd_cashout`.

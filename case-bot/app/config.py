@@ -45,7 +45,8 @@ MAX_WIN   = _int("MAX_WIN", 500000)          # bitta o'yindagi eng katta yutuq
 
 # Steam'ga chiqarish qoidalari (aldovdan himoya)
 MIN_WITHDRAW_VALUE    = _int("MIN_WITHDRAW_VALUE", 100)   # bundan arzon skin chiqarilmaydi
-WITHDRAW_NEEDS_DEPOSIT = _int("WITHDRAW_NEEDS_DEPOSIT", 1) # 1 = kamida bitta to'lov qilgan bo'lishi kerak
+WITHDRAW_MIN_DEPOSIT  = _int("WITHDRAW_MIN_DEPOSIT", 500) # jami shuncha Stars to'lagan bo'lishi kerak
+WITHDRAW_ENABLED      = _int("WITHDRAW_ENABLED", 0)       # boshlang'ich holat; keyin bot: /withdraw_on, /withdraw_off
 
 # Webhook maxfiy kaliti. Berilmasa, tokendan avtomatik yasaladi
 # (tokenning o'zi hech qayerda ochiq ko'rinmaydi).

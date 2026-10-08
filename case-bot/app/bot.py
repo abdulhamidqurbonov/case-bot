@@ -266,6 +266,7 @@ async def cmd_skins(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     parts += ["", "<b>Case'lar</b>"] + [f"{mark('case_' + c['id'])} <code>case_{c['id']}</code> — {_esc(c['name'])}"
                                         for c in CASE_LIST]
     parts += ["", "<b>O'yinlar</b>"] + [f"{mark('game_' + g)} <code>game_{g}</code> — {n}" for g, n in media.GAMES.items()]
+    parts += [f"{mark('crash_plane')} <code>crash_plane</code> — Crash samolyoti (fonsiz PNG, burni o'ngga)"]
     parts += ["", "<b>Ovozlar</b> (MP3/OGG, 2 MB gacha)"] + [f"{mark(k)} <code>{k}</code> — {d}"
                                                             for k, d in media.SOUNDS.items()]
     parts += ["", "Rasm yoki ovoz yuborib, izohiga kalitni yozing.",
@@ -288,6 +289,44 @@ async def cmd_delimg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🗑 O'chirildi" if ok else "Bu kalit uchun fayl yo'q")
 
 
+# ── Statistika va chiqarishni boshqarish (admin) ──────────────────────
+
+STAR_USD = 0.013   # dasturchi Stars'ni Fragment orqali yechganda taxminan shuncha $ oladi
+
+
+async def cmd_stats(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from app.api import withdraw_enabled
+    if not _is_admin(update):
+        return
+    st = await asyncio.to_thread(dbm.admin_stats)
+    on = await asyncio.to_thread(withdraw_enabled)
+    usd = lambda n: f"≈ ${n * STAR_USD:,.0f}".replace(",", " ")  # noqa: E731
+    f = lambda n: f"{int(n):,}".replace(",", " ")  # noqa: E731
+    await update.message.reply_text(
+        "<b>📊 CaseVault statistikasi</b>\n\n"
+        f"👥 O'yinchilar: <b>{f(st['users'])}</b> (bugun +{f(st['users_day'])})\n"
+        f"💳 To'lovlar: <b>{f(st['pay_count'])}</b> ta, {f(st['payers'])} kishidan\n"
+        f"⭐ Tushgan Stars: <b>{f(st['pay_stars'])}</b> {usd(st['pay_stars'])}\n"
+        f"   bugun: {f(st['pay_stars_day'])} ⭐\n\n"
+        f"🎮 O'yinlardan foyda: {f(st['games_profit'])} ⭐\n"
+        f"💰 O'yinchilar balansida: {f(st['balances'])} ⭐\n"
+        f"🎒 Inventarlardagi skinlar: {f(st['inv_value'])} ⭐ {usd(st['inv_value'])}\n\n"
+        f"📦 Steam so'rovlari: {f(st['wd_pending'])} kutilmoqda ({f(st['wd_pending_value'])} ⭐), {f(st['wd_sent'])} yuborilgan\n"
+        f"🔓 Steam'ga chiqarish: <b>{'OCHIQ' if on else 'YOPIQ'}</b>\n\n"
+        "<i>$ — taxminiy, Stars'ni Fragment orqali yechganda olinadigan summa.</i>",
+        parse_mode="HTML")
+
+
+async def cmd_withdraw_toggle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not _is_admin(update):
+        return
+    on = update.message.text.startswith("/withdraw_on")
+    await asyncio.to_thread(dbm.set_setting, "withdraw_enabled", "1" if on else "0")
+    await update.message.reply_text(
+        "🔓 Steam'ga chiqarish OCHILDI. O'yinchilar so'rov yubora oladi." if on else
+        "🔒 Steam'ga chiqarish YOPILDI. Ilovada «tez orada ochiladi» deb ko'rinadi.")
+
+
 async def cmd_myid(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     status = "✅ Siz adminsiz" if _is_admin(update) else (
@@ -301,6 +340,9 @@ async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(
         "<b>Admin buyruqlari</b>\n\n"
+        "/stats — to'lovlar va foyda statistikasi\n"
+        "/withdraw_on — Steam'ga chiqarishni ochish\n"
+        "/withdraw_off — yopish\n"
         "/pending — Steam so'rovlari\n"
         "/confirm_ID — yuborildi\n"
         "/reject_ID sabab — rad etish (skin qaytadi)\n"
@@ -333,6 +375,8 @@ def build_app() -> Application:
     application.add_handler(CommandHandler("delimg", cmd_delimg))
     application.add_handler(CommandHandler("admin", cmd_admin_help))
     application.add_handler(CommandHandler("myid", cmd_myid))
+    application.add_handler(CommandHandler("stats", cmd_stats))
+    application.add_handler(CommandHandler(["withdraw_on", "withdraw_off"], cmd_withdraw_toggle))
     application.add_handler(MessageHandler(
         filters.ChatType.PRIVATE & (filters.PHOTO | filters.Document.IMAGE | filters.AUDIO
                                     | filters.VOICE | filters.Document.AUDIO), on_admin_media))

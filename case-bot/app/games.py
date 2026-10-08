@@ -13,7 +13,7 @@ GameError = dbm.GameError
 
 UPGRADE_MAX_CHANCE = 0.75      # eng yuqori imkoniyat
 CONTRACT_MIN, CONTRACT_MAX = 3, 10
-CRASH_MAX = 1000.0
+CRASH_MAX = 500.0      # ~69 soniya uchish
 
 
 def _check_bet(bet: int) -> None:
@@ -109,20 +109,25 @@ def crash_point() -> float:
     return max(1.0, min(CRASH_MAX, x))
 
 
-def crash(telegram_id: int, bet: int, target: float) -> dict:
+# Samolyot tezligi: m(t) = e^(K·t)  →  2x ≈ 7.7 s, 10x ≈ 25.6 s, 100x ≈ 51 s
+CRASH_K = 0.09
+CRASH_DELAY = 1.6          # stavkadan keyin uchishgacha (soniya)
+CRASH_LATENCY = 0.12       # tarmoq kechikishi uchun kompensatsiya (soniya)
+
+
+def crash_start(telegram_id: int, bet: int, auto: float | None) -> dict:
     _check_bet(bet)
-    target = round(float(target), 2)
-    if not 1.01 <= target <= CRASH_MAX:
-        raise GameError("bad_target")
-    if bet * target > MAX_WIN:
+    if auto is not None:
+        auto = round(float(auto), 2)
+        if not 1.01 <= auto <= CRASH_MAX:
+            raise GameError("bad_target")
+    if bet * (auto or CRASH_MAX) > MAX_WIN and auto is not None:
         raise GameError("win_too_high")
+    return dbm.crash_start(telegram_id, bet, auto, crash_point(), CRASH_K, CRASH_DELAY)
 
-    def resolve():
-        point = crash_point()
-        payout = int(bet * target) if point >= target else 0
-        return payout, {"crash": point, "target": target}
 
-    return dbm.play_stars_game(telegram_id, "crash", bet, resolve)
+def crash_cashout(telegram_id: int, round_id: int) -> dict:
+    return dbm.crash_cashout(telegram_id, round_id, CRASH_K, CRASH_LATENCY)
 
 
 # ── Dice ──────────────────────────────────────────────────────────────
