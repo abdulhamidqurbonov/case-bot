@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from app import catalog, games, media, steam
+from app import catalog, games, live, media, steam
 from app import database as dbm
 from app.config import (
     ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME, CONTRACT_RTP_PERCENT,
@@ -124,11 +124,6 @@ class UpgradeBody(Body):
 
 class ContractBody(Body):
     ids: list[int] = Field(min_length=1, max_length=20)
-
-
-class CrashStartBody(Body):
-    bet: int
-    auto: float | None = None
 
 
 class CrashRoundBody(Body):
@@ -365,39 +360,76 @@ def api_contract(body: ContractBody):
     return _game(games.contract, user["id"], body.ids)
 
 
-@router.post("/crash/start")
-def api_crash_start(body: CrashStartBody):
+# ── Jonli Crash ───────────────────────────────────────────────────────
+
+class LiveBody(Body):
+    v: int | None = None
+
+
+class LiveBetBody(Body):
+    roundId: int
+    bet: int
+    auto: float | None = None
+
+
+@router.post("/crash/live")
+async def api_crash_live(body: LiveBody):
+    """Jonli holat. `v` berilsa — o'zgarish bo'lguncha kutadi (long-poll, ≤15 s)."""
     user = auth(body.initData)
-    return game_call(games.crash_start, user["id"], body.bet, body.auto)
+    viewers = live.mark_viewer(user["id"])
+    snap, ver = await live.snapshot(body.v)
+    my, bets = None, []
+    for b in snap["bets"]:
+        me = b["telegram_id"] == user["id"]
+        row = {"who": _mask(b["who"]), "bet": b["bet"], "status": b["status"], "payout": b["payout"],
+               "cash": float(b["cash_mult"]) if b["cash_mult"] is not None else None, "me": me}
+        if me:
+            my = row
+        bets.append(row)
+    return {"v": ver, "now": snap["now"], "round": snap["round"], "bets": bets, "players": snap["players"],
+            "viewers": viewers, "hist": snap["hist"], "my": my,
+            "betSecs": live.BET_SECS, "k": games.CRASH_K}
+
+
+@router.post("/crash/bet")
+async def api_crash_bet(body: LiveBetBody):
+    user = auth(body.initData)
+    auto = None
+    if body.auto is not None:
+        auto = round(float(body.auto), 2)
+        if not 1.01 <= auto <= games.CRASH_MAX:
+            raise HTTPException(status_code=400, detail="bad_target")
+    game_call(games._check_bet, body.bet)
+    cap = math.floor(MAX_WIN / body.bet * 100) / 100       # bitta stavkadan yutuq MAX_WIN dan oshmaydi
+    if cap < games.CRASH_MAX:
+        auto = min(auto or cap, cap)
+    await run_in_threadpool(dbm.get_or_create_user, user["id"], user.get("username"), user.get("first_name"))
+    res = await run_in_threadpool(game_call, dbm.live_bet, user["id"], body.roundId, body.bet, auto)
+    await live.bump()
+    return res
+
+
+@router.post("/crash/cancel")
+async def api_crash_cancel(body: CrashRoundBody):
+    user = auth(body.initData)
+    res = await run_in_threadpool(game_call, dbm.live_cancel, user["id"], body.roundId)
+    await live.bump()
+    return res
 
 
 @router.post("/crash/cashout")
-def api_crash_cashout(body: CrashRoundBody):
+async def api_crash_cashout(body: CrashRoundBody):
     user = auth(body.initData)
-    return game_call(games.crash_cashout, user["id"], body.roundId)
-
-
-@router.post("/crash/wait")
-async def api_crash_wait(body: CrashRoundBody):
-    """Samolyot uchib ketguncha kutadi va natijani qaytaradi (crash nuqtasi oldindan oshkor qilinmaydi)."""
-    user = auth(body.initData)
-    deadline = time.monotonic() + 80
-    while True:
-        r = await run_in_threadpool(dbm.crash_round, user["id"], body.roundId)
-        if not r:
-            raise HTTPException(status_code=400, detail="round_not_found")
-        if r["status"] != "live":
-            break
-        remaining = math.log(float(r["crash"])) / games.CRASH_K - r["elapsed"]
-        if remaining <= 0 or time.monotonic() > deadline:
-            break
-        await asyncio.sleep(min(remaining + 0.03, 20))
-    return await run_in_threadpool(game_call, dbm.crash_result, user["id"], body.roundId, games.CRASH_K)
+    res = await run_in_threadpool(game_call, dbm.live_cashout, user["id"], body.roundId,
+                                  games.CRASH_K, games.CRASH_LATENCY)
+    await live.bump()
+    return res
 
 
 @router.get("/crash/history")
-def api_crash_history():
-    return {"history": dbm.crash_history()}
+async def api_crash_history():
+    snap, _ = await live.snapshot(None)
+    return {"history": snap["hist"]}
 
 
 @router.post("/dice")

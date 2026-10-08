@@ -12,7 +12,7 @@ from telegram import Update
 from telegram.error import NetworkError, TimedOut
 
 from app import database as dbm
-from app import catalog
+from app import catalog, games, live
 from app.api import router
 from app.images import router as images_router
 from app.bot import build_app, get_app
@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI):
         drop_pending_updates=False,
     ))
     await ptb.start()
+    live.start(games.CRASH_K, lambda: games.crash_point())
     logger.info("✅ Bot ishga tushdi: @%s", ptb.bot.username)
     from app.config import ADMIN_CHAT_ID
     logger.info("Admin ID: %s", ADMIN_CHAT_ID or "SOZLANMAGAN (rasm yuklash ishlamaydi)")
@@ -79,6 +80,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await live.stop()
         await ptb.stop()
         await ptb.shutdown()
         dbm.close_pool()

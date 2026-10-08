@@ -226,6 +226,26 @@ CREATE TABLE IF NOT EXISTS crash_rounds (
     payout       INTEGER NOT NULL DEFAULT 0,
     settled_at   TIMESTAMPTZ
 );
+CREATE TABLE IF NOT EXISTS live_rounds (
+    id          BIGSERIAL PRIMARY KEY,
+    crash       NUMERIC(10,2) NOT NULL,
+    takeoff     TIMESTAMPTZ NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'betting',
+    crashed_at  TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS live_bets (
+    id           BIGSERIAL PRIMARY KEY,
+    round_id     BIGINT NOT NULL REFERENCES live_rounds(id),
+    telegram_id  BIGINT NOT NULL REFERENCES users(telegram_id),
+    bet          INTEGER NOT NULL,
+    auto         NUMERIC(10,2),
+    status       TEXT NOT NULL DEFAULT 'active',
+    cash_mult    NUMERIC(10,2),
+    payout       INTEGER NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (round_id, telegram_id)
+);
 CREATE TABLE IF NOT EXISTS settings (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -261,6 +281,8 @@ CREATE INDEX IF NOT EXISTS idx_referrer        ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_balance_log     ON balance_log(telegram_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_games_user      ON games(telegram_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_crash_live      ON crash_rounds(telegram_id) WHERE status = 'live';
+CREATE INDEX IF NOT EXISTS idx_live_rounds_st  ON live_rounds(status, id DESC);
+CREATE INDEX IF NOT EXISTS idx_live_bets_round ON live_bets(round_id, status);
 """
 
 
@@ -772,8 +794,8 @@ def admin_stats() -> dict:
                  JOIN inventory i ON i.id = w.inventory_id WHERE w.status = 'pending')::bigint AS wd_pending_value,
               (SELECT COUNT(*) FROM withdraw_requests WHERE status = 'sent')            AS wd_sent,
               (SELECT COALESCE(SUM(bet), 0) - COALESCE(SUM(payout), 0) FROM games)::bigint AS games_profit,
-              (SELECT COALESCE(SUM(bet), 0) - COALESCE(SUM(payout), 0) FROM crash_rounds
-                WHERE status <> 'live')::bigint                                         AS crash_profit
+              (SELECT COALESCE(SUM(bet), 0) - COALESCE(SUM(payout), 0) FROM live_bets
+                WHERE status IN ('cashed', 'lost'))::bigint                             AS crash_profit
         """)
         return dict(cur.fetchone())
 
@@ -902,3 +924,165 @@ def crash_history(limit: int = 20) -> list[float]:
     with db() as cur:
         cur.execute("SELECT crash FROM crash_rounds WHERE status <> 'live' ORDER BY id DESC LIMIT %s", (limit,))
         return [float(r["crash"]) for r in cur.fetchall()]
+
+
+# ── Jonli Crash (hamma uchun umumiy raund) ────────────────────────────
+
+def _epoch(cur) -> float:
+    cur.execute("SELECT EXTRACT(EPOCH FROM clock_timestamp())::float AS t")
+    return cur.fetchone()["t"]
+
+
+def live_recover() -> int:
+    """Server qayta ishga tushganda tugallanmagan raundlarni bekor qilib, stavkalarni qaytaradi."""
+    n = 0
+    with db() as cur:
+        cur.execute("UPDATE live_rounds SET status = 'void', crashed_at = clock_timestamp() "
+                    "WHERE status IN ('betting', 'flying') RETURNING id")
+        ids = [r["id"] for r in cur.fetchall()]
+        if ids:
+            cur.execute("UPDATE live_bets SET status = 'refunded' WHERE round_id = ANY(%s) AND status = 'active' "
+                        "RETURNING telegram_id, bet, round_id", (ids,))
+            for b in cur.fetchall():
+                _change_balance(cur, b["telegram_id"], b["bet"], "crash_refund", b["round_id"])
+                n += 1
+    return n
+
+
+def live_new_round(crash: float, bet_secs: float) -> dict:
+    with db() as cur:
+        cur.execute(
+            "INSERT INTO live_rounds (crash, takeoff) VALUES (%s, clock_timestamp() + make_interval(secs => %s)) "
+            "RETURNING id, EXTRACT(EPOCH FROM takeoff)::float AS takeoff", (crash, bet_secs))
+        r = dict(cur.fetchone())
+        r["now"] = _epoch(cur)
+        return r
+
+
+def live_takeoff(round_id: int) -> list[float]:
+    """Raundni «uchish» holatiga o'tkazadi. Avto-yechish qiymatlarini qaytaradi."""
+    with db() as cur:
+        cur.execute("UPDATE live_rounds SET status = 'flying' WHERE id = %s AND status = 'betting'", (round_id,))
+        cur.execute("SELECT DISTINCT auto FROM live_bets WHERE round_id = %s AND status = 'active' AND auto IS NOT NULL "
+                    "ORDER BY auto", (round_id,))
+        return [float(r["auto"]) for r in cur.fetchall()]
+
+
+def _settle_bets(cur, rows, crash: float) -> None:
+    for b in rows:
+        if b["payout"] > 0:
+            _change_balance(cur, b["telegram_id"], b["payout"], "crash_win", b["round_id"])
+        _log_game(cur, b["telegram_id"], "crash", b["bet"], b["payout"],
+                  {"crash": crash, "cashout": float(b["cash_mult"]) if b["cash_mult"] is not None else None,
+                   "round": b["round_id"], "live": True})
+
+
+def live_settle_auto(round_id: int, upto: float, crash: float) -> int:
+    """auto <= upto bo'lgan faol stavkalarni avto-koeffitsiyentda yechib oladi."""
+    with db() as cur:
+        cur.execute(
+            "UPDATE live_bets SET status = 'cashed', cash_mult = auto, payout = FLOOR(bet * auto)::int "
+            "WHERE round_id = %s AND status = 'active' AND auto IS NOT NULL AND auto <= %s AND auto <= %s RETURNING *",
+            (round_id, upto, crash))
+        rows = cur.fetchall()
+        _settle_bets(cur, rows, crash)
+        return len(rows)
+
+
+def live_crash(round_id: int, crash: float) -> None:
+    with db() as cur:
+        cur.execute("UPDATE live_rounds SET status = 'crashed', crashed_at = clock_timestamp() WHERE id = %s", (round_id,))
+        # o'tkazib yuborilgan avto-yechishlar (ehtiyot uchun) — keyin qolganlari yutqazdi
+        cur.execute(
+            "UPDATE live_bets SET status = 'cashed', cash_mult = auto, payout = FLOOR(bet * auto)::int "
+            "WHERE round_id = %s AND status = 'active' AND auto IS NOT NULL AND auto <= %s RETURNING *",
+            (round_id, crash))
+        _settle_bets(cur, cur.fetchall(), crash)
+        cur.execute("UPDATE live_bets SET status = 'lost' WHERE round_id = %s AND status = 'active' RETURNING *",
+                    (round_id,))
+        _settle_bets(cur, cur.fetchall(), crash)
+
+
+def live_bet(telegram_id: int, round_id: int, bet: int, auto: float | None) -> dict:
+    with db() as cur:
+        cur.execute("SELECT status, EXTRACT(EPOCH FROM takeoff - clock_timestamp())::float AS left_s "
+                    "FROM live_rounds WHERE id = %s FOR SHARE", (round_id,))
+        r = cur.fetchone()
+        if not r or r["status"] != "betting" or r["left_s"] < 0.25:
+            raise GameError("betting_closed")
+        cur.execute("INSERT INTO live_bets (round_id, telegram_id, bet, auto) VALUES (%s,%s,%s,%s) "
+                    "ON CONFLICT (round_id, telegram_id) DO NOTHING RETURNING id", (round_id, telegram_id, bet, auto))
+        if cur.fetchone() is None:
+            raise GameError("already_bet")
+        balance = _spend(cur, telegram_id, bet, "crash_bet", round_id)
+        return {"roundId": round_id, "balance": balance}
+
+
+def live_cancel(telegram_id: int, round_id: int) -> dict:
+    with db() as cur:
+        cur.execute("SELECT status, EXTRACT(EPOCH FROM takeoff - clock_timestamp())::float AS left_s "
+                    "FROM live_rounds WHERE id = %s FOR SHARE", (round_id,))
+        r = cur.fetchone()
+        if not r or r["status"] != "betting" or r["left_s"] < 0.25:
+            raise GameError("betting_closed")
+        cur.execute("DELETE FROM live_bets WHERE round_id = %s AND telegram_id = %s AND status = 'active' RETURNING bet",
+                    (round_id, telegram_id))
+        b = cur.fetchone()
+        if not b:
+            raise GameError("round_not_found")
+        balance = _change_balance(cur, telegram_id, b["bet"], "crash_cancel", round_id)
+        return {"roundId": round_id, "balance": balance}
+
+
+def live_cashout(telegram_id: int, round_id: int, k: float, latency: float) -> dict:
+    with db() as cur:
+        cur.execute(
+            "SELECT b.*, r.crash, r.status AS rstatus, "
+            "EXTRACT(EPOCH FROM clock_timestamp() - r.takeoff)::float AS elapsed "
+            "FROM live_bets b JOIN live_rounds r ON r.id = b.round_id "
+            "WHERE b.round_id = %s AND b.telegram_id = %s FOR UPDATE OF b", (round_id, telegram_id))
+        b = cur.fetchone()
+        if not b:
+            raise GameError("round_not_found")
+        if b["status"] == "active" and b["rstatus"] == "flying":
+            if b["elapsed"] < 0:
+                raise GameError("not_started")
+            crash = float(b["crash"])
+            mult = math.floor(100 * math.exp(k * max(0.0, b["elapsed"] - latency))) / 100
+            auto = float(b["auto"]) if b["auto"] is not None else None
+            if auto is not None and auto <= mult and auto <= crash:
+                mult = auto
+            if mult < crash or (auto is not None and mult == auto):
+                cur.execute("UPDATE live_bets SET status = 'cashed', cash_mult = %s, payout = %s WHERE id = %s RETURNING *",
+                            (mult, int(b["bet"] * mult), b["id"]))
+                row = cur.fetchone()
+                _settle_bets(cur, [row], crash)
+                b = {**b, **row}
+        cur.execute("SELECT stars_balance FROM users WHERE telegram_id = %s", (telegram_id,))
+        return {"roundId": round_id, "status": b["status"], "payout": b["payout"],
+                "cashout": float(b["cash_mult"]) if b["cash_mult"] is not None else None,
+                "balance": cur.fetchone()["stars_balance"]}
+
+
+def live_snapshot(limit_bets: int = 60) -> dict:
+    """Hamma uchun bir xil holat: joriy raund, stavkalar, tarix."""
+    with db() as cur:
+        now = _epoch(cur)
+        cur.execute("SELECT id, crash, status, EXTRACT(EPOCH FROM takeoff)::float AS takeoff, "
+                    "EXTRACT(EPOCH FROM crashed_at)::float AS crashed_at FROM live_rounds ORDER BY id DESC LIMIT 1")
+        r = cur.fetchone()
+        rnd, bets, total = None, [], 0
+        if r:
+            rnd = {"id": r["id"], "status": r["status"], "takeoff": r["takeoff"], "crashedAt": r["crashed_at"]}
+            if r["status"] in ("crashed", "void"):
+                rnd["crash"] = float(r["crash"])
+            cur.execute(
+                "SELECT b.telegram_id, b.bet, b.status, b.cash_mult, b.payout, COALESCE(u.username, u.first_name) AS who "
+                "FROM live_bets b JOIN users u ON u.telegram_id = b.telegram_id "
+                "WHERE b.round_id = %s ORDER BY b.bet DESC, b.id LIMIT %s", (r["id"], limit_bets))
+            bets = [dict(x) for x in cur.fetchall()]
+            cur.execute("SELECT COUNT(*) AS n FROM live_bets WHERE round_id = %s", (r["id"],))
+            total = cur.fetchone()["n"]
+        cur.execute("SELECT crash FROM live_rounds WHERE status = 'crashed' ORDER BY id DESC LIMIT 20")
+        hist = [float(x["crash"]) for x in cur.fetchall()]
+        return {"now": now, "round": rnd, "bets": bets, "players": total, "hist": hist}

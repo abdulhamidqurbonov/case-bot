@@ -62,7 +62,12 @@ Bitta servis uchun oylik bepul 750 soat yetadi (24/7 ≈ 744 soat).
 - `/stats` — tushgan Stars (≈ $), inventarlardagi skinlar qiymati, kutilayotgan so'rovlar.
 - Reja: birinchi 10–20 to'lovdan keyin DMarket'dan skinlar olinadi, shundan so'ng `/withdraw_on`.
 
-## Crash (samolyot)
-Stavka → samolyot uchadi → «Yechib olish» ni bosasiz yoki avto-yechish. Koeffitsiyent m(t)=e^(0.09·t),
-crash nuqtasi serverda yashirin. Samolyot rasmi: botga `crash_plane` kaliti bilan fonsiz PNG (burni o'ngga).
-Ovozlar: `snd_fly`, `snd_crash`, `snd_cashout`.
+## Crash (jonli, hamma uchun bitta raund)
+Server raundlarni to'xtovsiz aylantiradi: stavka (7 s) → samolyot uchadi → «uchib ketdi» (3 s) → yangi raund.
+Hamma bir xil samolyotni va bir-birining stavkalarini ko'radi. Uchish paytida bosilsa — keyingi raundga navbat.
+* Crash nuqtasi bazada yashirin, natijani server hisoblaydi (baza soati bo'yicha).
+* Holat long-poll orqali darhol keladi (`/api/crash/live`).
+* Hech kim ko'rmayotgan bo'lsa sikl pauza qiladi (45 s).
+* Server qayta ishga tushsa, tugallanmagan raund stavkalari qaytariladi.
+* Bitta stavkadan yutuq `MAX_WIN` dan oshmaydi (kerak bo'lsa avto-yechish majburan qo'yiladi).
+Samolyot rasmi: botga `crash_plane` (fonsiz PNG, burni o'ngga). Ovozlar: `snd_fly`, `snd_crash`, `snd_cashout`.
