@@ -63,7 +63,7 @@ Bitta servis uchun oylik bepul 750 soat yetadi (24/7 ≈ 744 soat).
 - Reja: birinchi 10–20 to'lovdan keyin DMarket'dan skinlar olinadi, shundan so'ng `/withdraw_on`.
 
 ## Crash (jonli, hamma uchun bitta raund)
-Server raundlarni to'xtovsiz aylantiradi: stavka (7 s) → samolyot uchadi → «uchib ketdi» (3 s) → yangi raund.
+Server raundlarni to'xtovsiz aylantiradi: stavka (15 s, ekranda katta sanoq) → samolyot uchadi → «uchib ketdi» (3 s) → yangi raund.
 Hamma bir xil samolyotni va bir-birining stavkalarini ko'radi. Uchish paytida bosilsa — keyingi raundga navbat.
 * Crash nuqtasi bazada yashirin, natijani server hisoblaydi (baza soati bo'yicha).
 * Holat long-poll orqali darhol keladi (`/api/crash/live`).
@@ -71,3 +71,7 @@ Hamma bir xil samolyotni va bir-birining stavkalarini ko'radi. Uchish paytida bo
 * Server qayta ishga tushsa, tugallanmagan raund stavkalari qaytariladi.
 * Bitta stavkadan yutuq `MAX_WIN` dan oshmaydi (kerak bo'lsa avto-yechish majburan qo'yiladi).
 Samolyot rasmi: botga `crash_plane` (fonsiz PNG, burni o'ngga). Ovozlar: `snd_fly`, `snd_crash`, `snd_cashout`.
+
+### Koeffitsiyent taqsimoti (CRASH_RTP_PERCENT=93, eng yuqori 100x)
+2x dan yuqori: ~46% · 5x+: ~19% · 10x+: ~9% · 20x+: ~5% · 50x+: ~2% · 100x: ~1% · darhol 1.00x: ~7%
+Crash xabari bazaga yozishni kutmasdan darhol yuboriladi (Supabase sekin bo'lsa ham ekran ortiqcha ko'tarilmaydi).

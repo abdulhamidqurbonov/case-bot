@@ -1,6 +1,6 @@
 """Jonli Crash: hamma o'yinchilar uchun bitta umumiy raund sikli.
 
-Sikl:  STAVKA (7 s) → UCHISH (crash nuqtasigacha) → UCHIB KETDI (3 s) → yangi raund.
+Sikl:  STAVKA (15 s) → UCHISH (crash nuqtasigacha) → UCHIB KETDI (3 s) → yangi raund.
 * Crash nuqtasi raund boshida yaratiladi va bazada yashirin turadi.
 * Vaqt hisobi baza soati bo'yicha (server soatlari farqi ta'sir qilmaydi).
 * Hech kim tomosha qilmasa, sikl to'xtab turadi (bazani ortiqcha yuklamaslik uchun).
@@ -19,7 +19,7 @@ from app.config import DATABASE_URL
 
 logger = logging.getLogger("live")
 
-BET_SECS = 7.0          # stavka qabul qilish vaqti
+BET_SECS = 15.0         # stavka qabul qilish vaqti
 AFTER_SECS = 3.0        # «uchib ketdi»dan keyin keyingi raundgacha
 IDLE_AFTER = 45.0       # shuncha soniya hech kim ko'rmasa — sikl pauza
 LOCK_KEY = 774_201_001  # advisory lock raqami
@@ -32,6 +32,9 @@ _snap_lock = asyncio.Lock()
 _viewers: dict[int, float] = {}
 _last_view = 0.0
 _task: asyncio.Task | None = None
+_db_dirty = True        # stavkalar ro'yxatini bazadan qayta o'qish kerakmi
+_cur: dict | None = None  # joriy raund (xotirada) — crash xabari bazani kutmasdan ketadi
+_hist: list[float] | None = None
 
 
 def _get_cond() -> asyncio.Condition:
@@ -41,10 +44,13 @@ def _get_cond() -> asyncio.Condition:
     return _cond
 
 
-async def bump() -> None:
-    """Holat o'zgardi — kutib turgan barcha mijozlarga darhol javob ketadi."""
-    global _version
+async def bump(bets: bool = True) -> None:
+    """Holat o'zgardi — kutib turgan barcha mijozlarga darhol javob ketadi.
+    bets=False — faqat raund holati o'zgardi (bazaga murojaat qilmasdan javob beriladi)."""
+    global _version, _db_dirty
     _version += 1
+    if bets:
+        _db_dirty = True
     c = _get_cond()
     async with c:
         c.notify_all()
@@ -73,18 +79,31 @@ async def snapshot(wait_for: int | None, timeout: float = 15.0) -> tuple[dict, i
 
 
 async def _fresh_snapshot() -> dict:
-    global _snap, _snap_ver
+    global _snap, _db_dirty
     async with _snap_lock:
-        if _snap is None or _snap_ver != _version or (time.monotonic() - _snap["_at"]) > 2.0:
-            ver = _version
+        if _snap is None or _db_dirty or (time.monotonic() - _snap["_at"]) > 2.0:
+            _db_dirty = False
             s = await asyncio.to_thread(dbm.live_snapshot)
-            s["_at"] = time.monotonic()
-            s["_now_mono"] = time.monotonic()
-            _snap, _snap_ver = s, ver
+            s["_at"] = s["_now_mono"] = time.monotonic()
+            _snap = s
         snap = dict(_snap)
-    # Baza vaqtini hozirgi lahzaga suramiz (kesh eskirgan bo'lsa ham to'g'ri soat)
+    # Baza vaqtini hozirgi lahzaga suramiz
     snap["now"] = snap["now"] + (time.monotonic() - snap.pop("_now_mono"))
     snap.pop("_at", None)
+    # Raund holati xotiradan (eng yangi) — bazaga yozilishini kutmaymiz
+    cur = _cur
+    if cur is not None:
+        r = snap.get("round")
+        if r is None or r["id"] <= cur["id"]:
+            same = r is not None and r["id"] == cur["id"]
+            snap["round"] = {"id": cur["id"], "status": cur["status"], "takeoff": cur["takeoff"],
+                             "crashedAt": cur.get("crashedAt")}
+            if cur["status"] in ("crashed", "void"):
+                snap["round"]["crash"] = cur["crash"]
+            if not same:
+                snap["bets"], snap["players"] = [], 0
+        if _hist is not None:
+            snap["hist"] = _hist[:20]
     return snap
 
 
@@ -98,28 +117,47 @@ async def _sleep_until(target_epoch: float, db_now: float, anchor: float) -> Non
 
 
 async def _one_round(k: float, crash_point) -> None:
-    crash = crash_point()
+    global _cur
+    crash = round(float(crash_point()), 2)
     r = await asyncio.to_thread(dbm.live_new_round, crash, BET_SECS)
     anchor = time.monotonic()
+    _cur = {"id": r["id"], "status": "betting", "takeoff": r["takeoff"], "crash": crash}
     await bump()
     await _sleep_until(r["takeoff"], r["now"], anchor)
 
-    autos = await asyncio.to_thread(dbm.live_takeoff, r["id"])
-    await bump()
-    # Avto-yechishlar: har biri o'z vaqtida
-    for a in autos:
-        if a > crash:
-            break
-        await _sleep_until(r["takeoff"] + math.log(a) / k, r["now"], anchor)
-        if await asyncio.to_thread(dbm.live_settle_auto, r["id"], a, crash):
-            await bump()
+    _cur = {**_cur, "status": "flying"}
+    await bump(bets=False)                                   # ekranlar darhol «uchish»ga o'tadi
+
+    async def autos_job():
+        # Bazaga yozish fonda — crash vaqtini hech qachon kechiktirmaydi (baza sekin bo'lsa ham)
+        autos = await asyncio.to_thread(dbm.live_takeoff, r["id"])
+        for a in autos:                                      # avto-yechishlar o'z vaqtida
+            if a > crash:
+                break
+            await _sleep_until(r["takeoff"] + math.log(a) / k, r["now"], anchor)
+            if await asyncio.to_thread(dbm.live_settle_auto, r["id"], a, crash):
+                await bump()
+
+    job = asyncio.create_task(autos_job())
     await _sleep_until(r["takeoff"] + math.log(crash) / k, r["now"], anchor)
+
+    # Avval HAMMAGA darhol xabar (bazani kutmasdan), keyin hisob-kitob
+    _cur = {**_cur, "status": "crashed", "crashedAt": r["now"] + (time.monotonic() - anchor)}
+    if _hist is not None:
+        _hist.insert(0, crash)
+        del _hist[40:]
+    await bump(bets=False)
+    try:
+        await asyncio.wait_for(job, 30)                     # avto-yechishlar yakunlansin
+    except Exception:
+        logger.exception("Avto-yechish vazifasida xato (live_crash qolganlarini hisoblaydi)")
     await asyncio.to_thread(dbm.live_crash, r["id"], crash)
     await bump()
     await asyncio.sleep(AFTER_SECS)
 
 
 async def _loop(k: float, crash_point) -> None:
+    global _hist
     lock_conn = None
     while True:
         try:
@@ -131,6 +169,7 @@ async def _loop(k: float, crash_point) -> None:
                 await asyncio.sleep(10)          # siklni boshqa server nusxasi yuritmoqda
                 continue
             n = await asyncio.to_thread(dbm.live_recover)
+            _hist = (await asyncio.to_thread(dbm.live_snapshot))["hist"]
             if n:
                 logger.warning("Tugallanmagan raund: %d ta stavka qaytarildi", n)
             await bump()

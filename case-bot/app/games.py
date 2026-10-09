@@ -13,7 +13,7 @@ GameError = dbm.GameError
 
 UPGRADE_MAX_CHANCE = 0.75      # eng yuqori imkoniyat
 CONTRACT_MIN, CONTRACT_MAX = 3, 10
-CRASH_MAX = 500.0      # ~69 soniya uchish
+CRASH_MAX = 100.0      # eng yuqori koeffitsiyent (~51 soniya uchish)
 
 
 def _check_bet(bet: int) -> None:

@@ -84,7 +84,7 @@ img{display:block;max-width:100%}
 .tile .vl{font-family:var(--disp);font-size:15px;margin-top:2px}
 .tile .ch{position:absolute;top:5px;right:6px;font-size:10.5px;color:var(--mut)}
 .tile::before{content:"";position:absolute;inset:auto 0 0 0;height:3px;background:var(--rc)}
-.tile::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 50% 100%,var(--rc),transparent 70%);opacity:.14;pointer-events:none}
+.tile{background-image:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,0) 60%)}
 .tile.sel{outline:2px solid var(--red2);outline-offset:-2px}
 .tile.sel .chk{display:flex}
 .chk{display:none;position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;background:var(--red);font-size:12px;align-items:center;justify-content:center;z-index:2}
@@ -142,8 +142,8 @@ img{display:block;max-width:100%}
 .gbanner{height:132px;margin:0 -14px 4px;position:relative;overflow:hidden}
 .gbanner img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent)}
 /* Bo'limga o'tish — yengil, GPU'da */
-.screen.on{animation:scIn .2s cubic-bezier(.2,.8,.2,1)}
-@keyframes scIn{from{opacity:0;transform:translate3d(0,6px,0)}}
+.screen.on{animation:scIn .14s ease-out}
+@keyframes scIn{from{opacity:0}}
 .reel .strip{transform:translate3d(0,0,0)}
 
 /* ── upgrade ── */
@@ -171,7 +171,12 @@ img{display:block;max-width:100%}
 .crash.boom.cashed .mx span{color:var(--win);font-family:var(--body);font-size:14px;letter-spacing:0}
 .crash .prep{position:absolute;left:50%;bottom:22px;width:56%;margin-left:-28%;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;opacity:0;transition:opacity .2s}
 .crash .prep i{display:block;height:100%;width:100%;background:var(--red2);transform-origin:left;transform:scaleX(0)}
-.crash.waiting .prep{opacity:1}
+.crash .prep{display:none}
+.crash.waiting .mx b{font-size:84px;color:var(--text)}
+.crash.waiting .mx b.tick{animation:cdn .35s ease-out}
+@keyframes cdn{from{transform:scale(1.25);color:var(--red2)}}
+.crash.waiting .mx span{color:var(--text);font-size:15px}
+.crash.waiting.soon .mx b{color:var(--red2)}
 .hist{display:flex;gap:6px;overflow-x:auto;margin:10px 0 8px;scrollbar-width:none}
 .hist::-webkit-scrollbar{display:none}
 .hist span{flex:0 0 auto;padding:3px 10px;border-radius:999px;background:var(--card);font-family:var(--disp);font-size:14px;color:#8fb0ff}
@@ -792,7 +797,7 @@ function pickWeighted(items) {
   for (const it of items) { r -= it.chance; if (r <= 0) return it; }
   return items[items.length - 1];
 }
-const WIN_AT = 48, REEL_N = 56;
+const WIN_AT = 40, REEL_N = 46;
 function reelHTML(items, winner) {
   const tiles = [];
   for (let i = 0; i < REEL_N; i++) tiles.push(i === WIN_AT && winner ? winner : pickWeighted(items));
@@ -812,25 +817,32 @@ function idleReels() {
     r.querySelector('.strip').style.transform = `translateX(${-(10 * step) + r.clientWidth / 2 - t.offsetWidth / 2}px)`;
   });
 }
-function spinReel(reel, dur) {
-  const strip = reel.querySelector('.strip'), tile = strip.children[WIN_AT];
-  const step = tile.offsetWidth + 6;
-  const jitter = (Math.random() - 0.5) * tile.offsetWidth * 0.7;
-  const x = -(WIN_AT * step + tile.offsetWidth / 2 - reel.clientWidth / 2 + jitter);
-  strip.style.transition = 'none'; strip.style.transform = `translateX(${-(2 * step)}px)`; void strip.offsetWidth;
-  strip.style.transition = `transform ${dur}ms cubic-bezier(.08,.62,.08,1)`;
-  strip.style.transform = `translateX(${x}px)`;
-  if (!reel.previousElementSibling) {            // faqat birinchi reel tiqillaydi
-    let last = -1, lastT = 0; const end = performance.now() + dur;
-    const loop = now => {
-      const m = new DOMMatrixReadOnly(getComputedStyle(strip).transform);
-      const idx = Math.floor((-m.m41 + reel.clientWidth / 2) / step);
-      if (idx !== last && now - lastT > 28) { if (last >= 0) sfx.tick(); last = idx; lastT = now; }
-      if (now < end) requestAnimationFrame(loop);
+// Case reel: JS bilan aylantiramiz — har kadrda brauzerdan hech narsa so'ramaymiz (telefonda silliq)
+const reelEase = t => 1 - Math.pow(1 - t, 4.6);
+function spinReels(reels, dur) {
+  const jobs = reels.map(reel => {
+    const strip = reel.querySelector('.strip'), tile = strip.children[WIN_AT];
+    const tw = tile.offsetWidth, step = tw + 6, half = reel.clientWidth / 2;
+    const jitter = (Math.random() - 0.5) * tw * 0.7;
+    const x0 = -(2 * step), x1 = -(WIN_AT * step + tw / 2 - half + jitter);
+    strip.style.transition = 'none'; strip.style.willChange = 'transform';
+    strip.style.transform = `translate3d(${x0}px,0,0)`;
+    return { reel, strip, tile, step, half, x0, x1 };
+  });
+  const first = jobs[0]; let lastIdx = -1;
+  return new Promise(done => {
+    const t0 = performance.now();
+    const frame = now => {
+      const t = Math.min(1, (now - t0) / dur), p = reelEase(t);
+      for (const j of jobs) j.strip.style.transform = `translate3d(${j.x0 + (j.x1 - j.x0) * p}px,0,0)`;
+      const idx = Math.floor((-(first.x0 + (first.x1 - first.x0) * p) + first.half) / first.step);
+      if (idx !== lastIdx) { if (lastIdx >= 0) sfx.tick(); lastIdx = idx; }
+      if (t < 1) return requestAnimationFrame(frame);
+      for (const j of jobs) { j.strip.style.willChange = 'auto'; j.reel.classList.add('done'); j.tile.classList.add('win'); }
+      done();
     };
-    requestAnimationFrame(loop);
-  }
-  return sleep(dur + 60).then(() => { reel.classList.add('done'); tile.classList.add('win'); });
+    requestAnimationFrame(frame);
+  });
 }
 
 $('openBtn').addEventListener('click', async () => {
@@ -847,11 +859,11 @@ $('openBtn').addEventListener('click', async () => {
   reelVars();
   $('reels').innerHTML = res.results.map(w => reelHTML(c.items, w)).join('');
   const dur = $('fast').checked ? 1300 : 5600;
-  await Promise.all([...$('reels').querySelectorAll('.reel')].map(r => spinReel(r, dur)));
+  await spinReels([...$('reels').querySelectorAll('.reel')], dur);
   notify('success');
   const top = res.results.reduce((a, b) => (b.value > a.value ? b : a));
   sfx.reveal(top.rarity);
-  S.busy = false; S.inv = null; S.invSig = ''; $('invDot').classList.add('on'); renderOpenBtn(); loadFeed();
+  S.busy = false; S.inv = null; S.invSig = ''; S.invDrawn = null; $('invDot').classList.add('on'); renderOpenBtn(); loadFeed();
   resultSheet(res.results, res.results.length > 1 ? `${res.results.length} ta skin` : 'Sizning yutug\'ingiz', 'w');
 });
 
@@ -872,7 +884,7 @@ function resultSheet(items, title, cls) {
     $('rsSell').disabled = true;
     const r = await api('/api/sell', { ids });
     if (r.error) { err(r.error); $('rsSell').disabled = false; return; }
-    setBal(r.balance); S.inv = null; S.invSig = ''; toast(`+${fmt(r.reward)} ⭐ balansga qo'shildi`); notify('success'); closeSheet();
+    setBal(r.balance); S.inv = null; S.invSig = ''; S.invDrawn = null; toast(`+${fmt(r.reward)} ⭐ balansga qo'shildi`); notify('success'); closeSheet();
     if (S.cur === 'upgrade' && S.up.from && ids.includes(S.up.from.id)) { S.up.from = null; renderUp(); }
   };
 }
@@ -887,6 +899,8 @@ async function loadInv() {
 }
 function renderInv() {
   const items = S.inv || [];
+  if (S.invDrawn === S.invSig && $('invGrid').childElementCount) return;   // o'zgarmagan — qayta chizmaymiz
+  S.invDrawn = S.invSig;
   $('invCount').textContent = `${items.length} ta skin`;
   $('invSum').textContent = fmt(items.reduce((a, b) => a + b.sell, 0)) + ' ⭐';
   $('sellAll').disabled = !items.length;
@@ -981,7 +995,7 @@ $('upBtn').addEventListener('click', async () => {
   S.needle = base + 360 * 5 + r.roll * 360;
   $('upNeedle').style.transform = `rotate(${S.needle}deg)`;
   await sleep(4400);
-  S.busy = false; S.inv = null; S.invSig = '';
+  S.busy = false; S.inv = null; S.invSig = ''; S.invDrawn = null;
   if (r.win) {
     notify('success'); sfx.reveal(r.item.rarity === 'gold' || r.item.rarity === 'covert' ? r.item.rarity : 'classified'); $('invDot').classList.add('on');
     S.up = { from: r.item, to: null }; renderUp();
@@ -1123,9 +1137,14 @@ function crDraw(now) {
 function crLoop(now) {
   const k = crK();
   if (CR.state === 'betting') {
-    const left = (CR.takeoff - now) / 1000;
-    $('crPrep').style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - left / CR.betSecs))})`;
-    $('crMsg').textContent = left > 0 ? `Stavkalar qabul qilinmoqda · ${Math.ceil(left)} s` : 'Uchmoqda…';
+    const left = (CR.takeoff - now) / 1000, sec = Math.max(0, Math.ceil(left));
+    if (sec !== CR.cd) {                                    // katta sanoq: 15, 14, … 1
+      CR.cd = sec; const b = $('crMx');
+      b.textContent = sec; b.classList.remove('tick'); void b.offsetWidth; b.classList.add('tick');
+      $('crBox').classList.toggle('soon', sec <= 3);
+      $('crMsg').textContent = sec > 0 ? 'soniyadan keyin uchadi · stavka qo\'ying' : '';
+      if (sec > 0 && sec <= 3) sfx.dialTick();
+    }
     if (left <= 0) crPhase('flying');
   }
   const el = crDraw(now);
@@ -1145,9 +1164,10 @@ function crPhase(ph) {
   const box = $('crBox'); CR.state = ph;
   box.classList.toggle('waiting', ph === 'betting');
   if (ph === 'betting') {
-    box.classList.remove('boom', 'cashed'); CR.endAt = 0; CR.m = 1; $('crMx').textContent = '1.00x';
+    box.classList.remove('boom', 'cashed'); CR.endAt = 0; CR.m = 1; CR.cd = null;
   } else if (ph === 'flying') {
-    $('crMsg').textContent = ''; sfx.fly(true);
+    $('crBox').classList.remove('soon'); $('crMx').classList.remove('tick');
+    $('crMx').textContent = '1.00x'; $('crMsg').textContent = ''; sfx.fly(true);
   } else if (ph === 'crashed') {
     CR.endAt = Math.min(performance.now(), CR.takeoff + Math.log(Math.max(1, CR.crash || 1)) / crK() * 1000);
     if (CR.lateJoin) { CR.endAt -= 2000; CR.lateJoin = false; } else { sfx.boom(); }
