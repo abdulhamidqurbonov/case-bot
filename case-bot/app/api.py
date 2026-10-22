@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from app import catalog, games, live, media, steam
+from app import ai, catalog, games, insights, live, media, steam
 from app import database as dbm
 from app.config import (
     ADMIN_CHAT_ID, BOT_TOKEN, BOT_USERNAME, CHANNEL_USERNAME, CONTRACT_RTP_PERCENT,
@@ -69,6 +69,7 @@ def auth(init_data: str) -> dict:
     user = verify_init_data(init_data)
     if not user:
         raise HTTPException(status_code=401, detail="invalid_init_data")
+    insights.seen(user["id"])                     # admin AI uchun: «hozir ilovada»
     return user
 
 
@@ -218,7 +219,7 @@ def api_bootstrap(body: Body):
             "contractRtp": CONTRACT_RTP_PERCENT, "contractMin": games.CONTRACT_MIN,
             "contractMax": games.CONTRACT_MAX, "crashRtp": CRASH_RTP_PERCENT,
             "diceRtp": DICE_RTP_PERCENT, "freeCooldownH": FREE_CASE_COOLDOWN_H,
-            "refBonus": REFERRAL_BONUS_STARS,
+            "refBonus": REFERRAL_BONUS_STARS, "supportAi": ai.support_enabled(),
         },
     }
 
@@ -495,6 +496,52 @@ async def api_create_invoice(body: InvoiceBody):
         logger.exception("Invoice yaratilmadi")
         raise HTTPException(status_code=500, detail="invoice_failed")
     return {"invoiceLink": link}
+
+
+# ── Ilova hodisalari va AI support ────────────────────────────────────
+
+class TrackBody(Body):
+    kind: str = Field(default="", max_length=20)
+    code: str = Field(default="", max_length=60)
+    detail: str = Field(default="", max_length=300)
+
+
+@router.post("/track")
+def api_track(body: TrackBody):
+    """Ilova qaysi bo'limda ekani va qanday xatolar chiqqani (admin AI tahlili uchun)."""
+    user = auth(body.initData)
+    if body.kind == "screen":
+        insights.seen(user["id"], body.code[:20] or None)
+    elif body.kind == "error" and body.code:
+        dbm.add_event(user["id"], "error", body.code, body.detail)
+    return {"ok": True}
+
+
+class SupportBody(Body):
+    text: str = Field(default="", max_length=1000)
+    errorCode: str = Field(default="", max_length=60)
+
+
+@router.post("/support/history")
+def api_support_history(body: Body):
+    user = auth(body.initData)
+    if not ai.support_enabled():
+        return {"enabled": False, "messages": []}
+    rows = dbm.ai_history("support", user["id"], 30)
+    return {"enabled": True, "messages": [{"role": r["role"], "text": r["content"]} for r in rows],
+            "left": max(0, ai.SUPPORT_DAILY_LIMIT - dbm.ai_count_today("support", user["id"]))}
+
+
+@router.post("/support/ask")
+async def api_support_ask(body: SupportBody):
+    user = auth(body.initData)
+    try:
+        return await ai.support_ask(user["id"], body.text, user.get("username"), user.get("first_name"),
+                                    body.errorCode or None)
+    except ai.SupportLimit as e:
+        raise HTTPException(status_code=400 if e.code != "support_off" else 404, detail=e.code)
+    except ai.AIError:
+        raise HTTPException(status_code=503, detail="ai_busy")
 
 
 def _esc(text) -> str:

@@ -26,7 +26,7 @@ RARITIES = {
 }
 
 # kalit: (nomi, rarity, qiymati Stars'da)
-SKINS = {
+BUILTIN_SKINS = {
     "cz75":         ("CZ75-Auto | Tread Plate",       "industrial", 8),
     "glock":        ("Glock-18 | Groundwater",        "industrial", 10),
     "tec9":         ("Tec-9 | Titanium Bit",          "milspec",    20),
@@ -54,7 +54,8 @@ SKINS = {
 }
 
 # Case tarkibi: (skin kaliti, og'irlik). Og'irlik qancha katta — shuncha tez-tez tushadi.
-CASES = [
+# Bot orqali qo'shilgan case'lar bazada saqlanadi va shularga qo'shiladi (/newcase).
+BUILTIN_CASES = [
     {"id": "free", "name": "Kunlik bepul", "free": True, "items": [
         ("cz75", 6000), ("glock", 3000), ("tec9", 900), ("famas", 90), ("ak47_red", 10)]},
     {"id": "starter", "name": "Boshlang'ich", "badge": "Yangi o'yinchilar", "items": [
@@ -84,6 +85,15 @@ PACKAGES = {
 }
 
 
+# Joriy (o'zgaruvchan) katalog: kodda yozilganlar + bazadagilar. Obyektlar joyida yangilanadi,
+# shuning uchun boshqa modullardagi `from app.catalog import SKINS` havolalari doim yangi.
+SKINS: dict = dict(BUILTIN_SKINS)
+CASES: list = list(BUILTIN_CASES)
+CASE_LIST: list = []
+CASE_BY_ID: dict = {}
+_NAME_TO_KEY: dict = {}
+
+
 # ── Yordamchilar ──────────────────────────────────────────────────────
 
 def skin(key: str) -> dict | None:
@@ -92,9 +102,6 @@ def skin(key: str) -> dict | None:
         return None
     name, rarity, value = s
     return {"key": key, "name": name, "rarity": rarity, "value": value}
-
-
-_NAME_TO_KEY = {v[0].lower(): k for k, v in SKINS.items()}
 
 
 def key_by_name(name: str) -> str | None:
@@ -111,27 +118,67 @@ def _ev(items) -> float:
     return sum(SKINS[k][2] * w for k, w in items) / total
 
 
-def _prepare():
-    out = []
-    for c in CASES:
-        total = sum(w for _, w in c["items"])
-        ev = _ev(c["items"])
-        price = 0 if c.get("free") else _round_price(ev * 100 / CASE_RTP_PERCENT)
-        out.append({
-            **{k: v for k, v in c.items() if k != "items"},
-            "price": price,
-            "avg_value": round(ev, 1),
-            "rtp": None if not price else round(ev / price * 100, 1),
-            "items": sorted(
-                [{**skin(k), "chance": round(w / total * 100, 3)} for k, w in c["items"]],
-                key=lambda x: -x["value"]),
-            "_pool": c["items"],
-        })
-    return out
+def prepare_case(c: dict) -> dict:
+    total = sum(w for _, w in c["items"])
+    ev = _ev(c["items"])
+    price = 0 if c.get("free") else _round_price(ev * 100 / CASE_RTP_PERCENT)
+    return {
+        **{k: v for k, v in c.items() if k != "items"},
+        "price": price,
+        "avg_value": round(ev, 1),
+        "rtp": None if not price else round(ev / price * 100, 1),
+        "items": sorted(
+            [{**skin(k), "chance": round(w / total * 100, 3)} for k, w in c["items"]],
+            key=lambda x: -x["value"]),
+        "_pool": [tuple(x) for x in c["items"]],
+    }
 
 
-CASE_LIST = _prepare()
-CASE_BY_ID = {c["id"]: c for c in CASE_LIST}
+def check_case(c: dict, existing_ids=()) -> list[str]:
+    """Case xatolarini qaytaradi (bo'sh ro'yxat — hammasi to'g'ri)."""
+    errs = []
+    if not c.get("id"):
+        errs.append("id bo'sh")
+    if c.get("id") in existing_ids:
+        errs.append(f"'{c['id']}' id band")
+    if not c.get("items"):
+        errs.append("case ichida skin yo'q")
+    for k, w in c.get("items", []):
+        if k not in SKINS:
+            errs.append(f"noma'lum skin: {k}")
+        if not isinstance(w, (int, float)) or w <= 0:
+            errs.append(f"{k}: og'irlik musbat son bo'lishi kerak")
+    return errs
+
+
+def apply(custom_skins: list[dict], custom_cases: list[dict], hidden: set[str]) -> None:
+    """Bazadagi skin/case'larni kodda yozilganlarga qo'shib, katalogni joyida yangilaydi."""
+    SKINS.clear()
+    SKINS.update(BUILTIN_SKINS)
+    for r in custom_skins:
+        if r["rarity"] in RARITIES and r["value"] > 0:
+            SKINS[r["key"]] = (r["name"], r["rarity"], int(r["value"]))
+    _NAME_TO_KEY.clear()
+    _NAME_TO_KEY.update({v[0].lower(): k for k, v in SKINS.items()})
+
+    builtin = [c for c in BUILTIN_CASES if c["id"] not in hidden]
+    ids = {c["id"] for c in builtin}
+    fresh = []
+    for r in reversed(custom_cases):                         # eng yangisi birinchi
+        c = {"id": r["id"], "name": r["name"], "items": [tuple(x) for x in r["items"]], "custom": True}
+        if r.get("badge"):
+            c["badge"] = r["badge"]
+        if r.get("descr"):
+            c["descr"] = r["descr"]
+        if r["id"] in hidden or check_case(c, ids):
+            continue
+        fresh.append(c)
+        ids.add(c["id"])
+    # Tartib: bepul case → bot orqali qo'shilgan yangi case'lar → qolganlari
+    CASES[:] = [c for c in builtin if c.get("free")] + fresh + [c for c in builtin if not c.get("free")]
+    CASE_LIST[:] = [prepare_case(c) for c in CASES]
+    CASE_BY_ID.clear()
+    CASE_BY_ID.update({c["id"]: c for c in CASE_LIST})
 
 
 def public_cases() -> list[dict]:
@@ -145,16 +192,19 @@ def pick(case_id: str) -> dict:
 
 
 def validate() -> None:
-    ids = [c["id"] for c in CASES]
+    ids = [c["id"] for c in BUILTIN_CASES]
     assert len(ids) == len(set(ids)), "CASES: takroriy id"
-    assert sum(1 for c in CASES if c.get("free")) <= 1, "Bepul case bittadan ko'p"
-    for c in CASES:
+    assert sum(1 for c in BUILTIN_CASES if c.get("free")) <= 1, "Bepul case bittadan ko'p"
+    for c in BUILTIN_CASES:
         assert c["items"], f"{c['id']}: bo'sh case"
         for k, w in c["items"]:
-            assert k in SKINS, f"{c['id']}: noma'lum skin '{k}'"
+            assert k in BUILTIN_SKINS, f"{c['id']}: noma'lum skin '{k}'"
             assert w > 0, f"{c['id']}: og'irlik > 0 bo'lishi kerak"
-    for k, (_, r, v) in SKINS.items():
+    for k, (_, r, v) in BUILTIN_SKINS.items():
         assert r in RARITIES, f"{k}: noma'lum rarity '{r}'"
         assert v > 0, f"{k}: qiymat > 0 bo'lishi kerak"
     for k, p in PACKAGES.items():
         assert p["stars"] >= 1, f"Paket {k}"
+
+
+apply([], [], set())

@@ -48,6 +48,23 @@ async def _retry(name: str, func, attempts: int = 5):
             await asyncio.sleep(wait)
 
 
+async def _keep_alive() -> None:
+    """Render'ning bepul serveri uxlab qolmasligi uchun o'zining tashqi manziliga so'rov yuboradi.
+    So'rov Render proksisi orqali o'tadi, shuning uchun «kiruvchi trafik» hisoblanadi."""
+    import httpx
+    url = WEBAPP_URL + "/health"
+    await asyncio.sleep(60)
+    async with httpx.AsyncClient(timeout=20) as client:
+        while True:
+            try:
+                r = await client.get(url, headers={"User-Agent": "CaseVault-keepalive"})
+                if r.status_code != 200:
+                    logger.warning("Keep-alive: %s javob berdi %s", url, r.status_code)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Keep-alive xatosi: %s", e.__class__.__name__)
+            await asyncio.sleep(600)                       # 10 daqiqa (Render 15 daqiqada uxlatadi)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     missing = missing_required()
@@ -62,6 +79,8 @@ async def lifespan(app: FastAPI):
                     c["id"], c["price"], c["avg_value"], f"{c['rtp']}%" if c["rtp"] else "bepul")
 
     await _retry("Baza", lambda: asyncio.to_thread(dbm.init_db))
+    from app import store
+    await asyncio.to_thread(store.reload)              # bot orqali qo'shilgan case'lar
 
     ptb = build_app()
     await _retry("Telegram", ptb.initialize)
@@ -72,7 +91,20 @@ async def lifespan(app: FastAPI):
         drop_pending_updates=False,
     ))
     await ptb.start()
+    from app.config import FRONTEND_URL, app_url
+    if FRONTEND_URL:
+        # Pastki chapdagi menyu tugmasi ham uxlamaydigan sahifani ochsin
+        from telegram import MenuButtonWebApp, WebAppInfo
+        try:
+            await ptb.bot.set_chat_menu_button(menu_button=MenuButtonWebApp("🎮 O'ynash", WebAppInfo(app_url())))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Menyu tugmasini o'rnatib bo'lmadi: %s", e)
     live.start(games.CRASH_K, lambda: games.crash_point())
+    from app.config import KEEP_ALIVE
+    ka = asyncio.get_running_loop().create_task(_keep_alive()) if KEEP_ALIVE else None
+    from app import ai
+    daily = asyncio.get_running_loop().create_task(ai.daily_loop()) if ai.enabled() else None
+    logger.info("AI: %s", "yoqilgan" if ai.enabled() else "o'chiq (GROQ_API_KEY yo'q)")
     logger.info("✅ Bot ishga tushdi: @%s", ptb.bot.username)
     from app.config import ADMIN_CHAT_ID
     logger.info("Admin ID: %s", ADMIN_CHAT_ID or "SOZLANMAGAN (rasm yuklash ishlamaydi)")
@@ -80,6 +112,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        if ka:
+            ka.cancel()
+        if daily:
+            daily.cancel()
+        await ai.close()
         await live.stop()
         await ptb.stop()
         await ptb.shutdown()
@@ -87,6 +124,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+
+# Ilova sahifasi boshqa hostingda (FRONTEND_URL) bo'lsa — faqat o'sha saytga API'dan foydalanishga ruxsat
+from app.config import FRONTEND_URL  # noqa: E402
+if FRONTEND_URL:
+    from urllib.parse import urlsplit
+    from fastapi.middleware.cors import CORSMiddleware
+    _u = urlsplit(FRONTEND_URL)
+    app.add_middleware(CORSMiddleware, allow_origins=[f"{_u.scheme}://{_u.netloc}"],
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type"], max_age=86400)
 
 
 @app.post(WEBHOOK_PATH)

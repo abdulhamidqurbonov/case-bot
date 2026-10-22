@@ -1,6 +1,6 @@
 """Jonli Crash: hamma o'yinchilar uchun bitta umumiy raund sikli.
 
-Sikl:  STAVKA (15 s) → UCHISH (crash nuqtasigacha) → UCHIB KETDI (3 s) → yangi raund.
+Sikl:  STAVKA (10 s) → UCHISH (crash nuqtasigacha) → UCHIB KETDI (3 s) → yangi raund.
 * Crash nuqtasi raund boshida yaratiladi va bazada yashirin turadi.
 * Vaqt hisobi baza soati bo'yicha (server soatlari farqi ta'sir qilmaydi).
 * Hech kim tomosha qilmasa, sikl to'xtab turadi (bazani ortiqcha yuklamaslik uchun).
@@ -19,7 +19,7 @@ from app.config import DATABASE_URL
 
 logger = logging.getLogger("live")
 
-BET_SECS = 15.0         # stavka qabul qilish vaqti
+BET_SECS = 10.0         # stavka qabul qilish vaqti
 AFTER_SECS = 3.0        # «uchib ketdi»dan keyin keyingi raundgacha
 IDLE_AFTER = 45.0       # shuncha soniya hech kim ko'rmasa — sikl pauza
 LOCK_KEY = 774_201_001  # advisory lock raqami

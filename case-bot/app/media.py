@@ -34,9 +34,21 @@ SOUNDS = {
     "snd_cashout": "Crash: pul yechib olinganda",
 }
 
-IMAGE_KEYS = set(SKINS) | {"case_" + c["id"] for c in CASE_LIST} | {"game_" + g for g in GAMES} | {"logo", "crash_plane"}
+IMAGE_KEYS: set = set()
 SOUND_KEYS = set(SOUNDS)
-ALL_KEYS = IMAGE_KEYS | SOUND_KEYS
+ALL_KEYS: set = set()
+
+
+def refresh_keys() -> None:
+    """Katalog o'zgarganda (yangi case/skin) rasm kalitlarini yangilaydi."""
+    IMAGE_KEYS.clear()
+    IMAGE_KEYS.update(set(SKINS) | {"case_" + c["id"] for c in CASE_LIST} | {"game_" + g for g in GAMES}
+                      | {"logo", "crash_plane"})
+    ALL_KEYS.clear()
+    ALL_KEYS.update(IMAGE_KEYS | SOUND_KEYS)
+
+
+refresh_keys()
 
 MAX_IMAGE_IN = 10 * 1024 * 1024
 MAX_SOUND_IN = 2 * 1024 * 1024

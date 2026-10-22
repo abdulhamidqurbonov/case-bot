@@ -63,7 +63,7 @@ Bitta servis uchun oylik bepul 750 soat yetadi (24/7 ≈ 744 soat).
 - Reja: birinchi 10–20 to'lovdan keyin DMarket'dan skinlar olinadi, shundan so'ng `/withdraw_on`.
 
 ## Crash (jonli, hamma uchun bitta raund)
-Server raundlarni to'xtovsiz aylantiradi: stavka (15 s, ekranda katta sanoq) → samolyot uchadi → «uchib ketdi» (3 s) → yangi raund.
+Server raundlarni to'xtovsiz aylantiradi: stavka (10 s, ekranda katta sanoq) → samolyot uchadi → «uchib ketdi» (3 s) → yangi raund.
 Hamma bir xil samolyotni va bir-birining stavkalarini ko'radi. Uchish paytida bosilsa — keyingi raundga navbat.
 * Crash nuqtasi bazada yashirin, natijani server hisoblaydi (baza soati bo'yicha).
 * Holat long-poll orqali darhol keladi (`/api/crash/live`).
@@ -75,3 +75,47 @@ Samolyot rasmi: botga `crash_plane` (fonsiz PNG, burni o'ngga). Ovozlar: `snd_fl
 ### Koeffitsiyent taqsimoti (CRASH_RTP_PERCENT=93, eng yuqori 100x)
 2x dan yuqori: ~46% · 5x+: ~19% · 10x+: ~9% · 20x+: ~5% · 50x+: ~2% · 100x: ~1% · darhol 1.00x: ~7%
 Crash xabari bazaga yozishni kutmasdan darhol yuboriladi (Supabase sekin bo'lsa ham ekran ortiqcha ko'tarilmaydi).
+
+## Case qo'shish (bot orqali, kod va deploy kerak emas)
+1. Botga `/newcase` yozing.
+2. Case rasmini yuboring → nomini yozing → e'lon matnini (title) yozing (yoki `/skip`).
+3. Skinlarni yozing, har qatorga `kalit og'irlik`:
+   ```
+   glock 4000
+   deagle 1500
+   awp_asi 300
+   karambit 5
+   ```
+4. Bot e'lonni aynan o'yinchilar ko'radigandek ko'rsatadi + narx, RTP, har skin ehtimoli.
+   **✅ Qo'shish** yoki **📢 Qo'shish va hammaga yuborish**.
+- Narx avtomatik (RTP 90%). Yangi case ro'yxatda bepul case'dan keyin birinchi chiqadi.
+- E'londagi «🎁 Case ochish» tugmasi ilovada to'g'ridan-to'g'ri shu case'ni ochadi.
+- `/cases` ro'yxat · `/delcase ID` o'chirish/yashirish · `/showcase ID` qaytarish · `/announce ID` e'lonni qayta yuborish
+- `/addskin usp_kill | USP-S | Kill Confirmed | covert | 1500` — yangi skin turi
+- `/broadcast` — istalgan xabarga reply qilib yozing: hammaga «🎮 Ochish» tugmasi bilan ketadi
+
+## Xavfsizlik (Supabase RLS)
+Server ishga tushganda barcha jadvallarda RLS yoqiladi va `anon`/`authenticated` rollardan huquqlar olinadi —
+Supabase'ning ochiq REST API'si orqali hech kim ma'lumot o'qiy/o'zgartira olmaydi. Bot jadvallar egasi sifatida ulanadi.
+`SUPABASE_URL` va `SUPABASE_KEY` kodda ishlatilmaydi — Render'dan o'chirib tashlash mumkin.
+
+## AI biznes hamkor (Groq)
+
+1. https://console.groq.com → API Keys → Create API Key (bepul tarif bor).
+2. Render → Environment → `GROQ_API_KEY` = kalit. Ixtiyoriy: `AI_MODEL` (standart `openai/gpt-oss-120b`),
+   `AI_FALLBACK_MODEL` (limit tugasa — `llama-3.3-70b-versatile`), `SUPPORT_AI=0` — o'yinchilar supportini o'chirish,
+   `SUPPORT_DAILY_LIMIT` — bitta o'yinchi kuniga nechta savol bera oladi (standart 30).
+   Model nomi o'zgargan bo'lsa, bot hisobdagi mos modelni o'zi tanlaydi.
+3. Botda: `/ai` — suhbat rejimi (statistika, «@username nima qilyapti», xatolar, g'oyalar, reja), `/ai savol`,
+   `/ai_off`, `/ai_reset`, `/ai_daily` — har kuni 21:00 (Toshkent) hisobot.
+
+AI faqat ma'lumot o'qiydi — balans, skin yoki sozlamani o'zgartira olmaydi. O'yinchilar uchun support ilovadagi
+Profil → «Yordam» va botga yozilgan oddiy xabarlar orqali ishlaydi; hal qila olmasa muammoni adminga yuboradi.
+
+## Render «Application loading» sahifasi chiqmasligi uchun
+
+* Eng oddiy: https://cron-job.org da `https://SIZNING-SERVIS.onrender.com/health` ga har 5 daqiqada so'rov.
+* To'liq yechim: ilova sahifasini Cloudflare Pages'ga qo'yish (bepul, uxlamaydi). Cloudflare → Workers & Pages →
+  Create → Pages → GitHub repo'ni ulash → Build command bo'sh, Build output directory: `case-bot/public` → Deploy.
+  So'ng Render'da `FRONTEND_URL` = olingan manzil (masalan `https://case-vault.pages.dev`). Bot tugmalari va menyu
+  tugmasi o'sha sahifani ochadi; server uxlagan bo'lsa ham darhol CaseVault seyf ekrani chiqadi.

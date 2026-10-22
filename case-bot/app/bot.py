@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from app import database as dbm
-from app.config import ADMIN_CHAT_ID, BOT_TOKEN, REFERRAL_BONUS_STARS, WEBAPP_URL
+from app.config import ADMIN_CHAT_ID, BOT_TOKEN, REFERRAL_BONUS_STARS, app_url
 from app.catalog import CASE_LIST, PACKAGES, SKINS, key_by_name
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def _esc(text) -> str:
 
 
 def _play_kb(text: str = "🎮 O'yinni boshlash") -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[InlineKeyboardButton(text, web_app=WebAppInfo(url=WEBAPP_URL))]])
+    return InlineKeyboardMarkup([[InlineKeyboardButton(text, web_app=WebAppInfo(url=app_url()))]])
 
 
 def _is_admin(update: Update) -> bool:
@@ -340,6 +340,10 @@ async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(
         "<b>Admin buyruqlari</b>\n\n"
+        "/newcase — yangi case qo'shish (rasm, nom, post, skinlar)\n"
+        "/cases — case'lar ro'yxati · /delcase ID · /showcase ID\n"
+        "/addskin — yangi skin turi · /announce ID — case e'loni\n"
+        "/broadcast — xabarga reply qilib: hammaga yuborish\n"
         "/stats — to'lovlar va foyda statistikasi\n"
         "/withdraw_on — Steam'ga chiqarishni ochish\n"
         "/withdraw_off — yopish\n"
@@ -349,7 +353,11 @@ async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/skins — rasm va ovoz kalitlari ro'yxati\n"
         "Rasm/ovoz + izohda kalit — yuklash\n"
         "/delimg kalit — o'chirish\n"
-        "/myid — Telegram ID",
+        "/myid — Telegram ID\n\n"
+        "🤖 <b>AI yordamchi</b>\n"
+        "/ai — AI bilan suhbat (statistika, o'yinchilar, g'oyalar)\n"
+        "/ai savol — bitta savol · /ai_off · /ai_reset\n"
+        "/ai_daily — har kuni kechqurun hisobot",
         parse_mode="HTML")
 
 
@@ -383,6 +391,10 @@ def build_app() -> Application:
     application.add_handler(MessageHandler(filters.Regex(_ADMIN_RE), cmd_admin_action))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
+    from app import admin_cases
+    admin_cases.register(application, _is_admin)
+    from app import ai_bot
+    ai_bot.register(application, _is_admin)
     application.add_error_handler(on_error)
     _app = application
     return application

@@ -48,6 +48,38 @@ MIN_WITHDRAW_VALUE    = _int("MIN_WITHDRAW_VALUE", 100)   # bundan arzon skin ch
 WITHDRAW_MIN_DEPOSIT  = _int("WITHDRAW_MIN_DEPOSIT", 500) # jami shuncha Stars to'lagan bo'lishi kerak
 WITHDRAW_ENABLED      = _int("WITHDRAW_ENABLED", 0)       # boshlang'ich holat; keyin bot: /withdraw_on, /withdraw_off
 
+# Render bepul tarifida server 15 daqiqa so'rovsiz qolsa uxlaydi. 1 = server o'zini har 10 daqiqada
+# tashqi manzil orqali «uyg'otib» turadi (WEBAPP_URL/health). 0 = o'chirilgan.
+KEEP_ALIVE = _int("KEEP_ALIVE", 1)
+
+# ── AI (Groq — groq.com, bepul tarifi bor, juda tez) ───────────────────
+# console.groq.com → API Keys. Kalit bo'lmasa AI funksiyalari shunchaki o'chiq turadi.
+AI_API_KEY   = (os.getenv("GROQ_API_KEY", "") or os.getenv("AI_API_KEY", "")).strip()
+AI_MODEL     = os.getenv("AI_MODEL", "openai/gpt-oss-120b").strip()
+# Limit tugasa yoki asosiy model ishlamasa — shu model ishlatiladi
+AI_FALLBACK_MODEL = os.getenv("AI_FALLBACK_MODEL", "llama-3.3-70b-versatile").strip()
+AI_BASE_URL  = os.getenv("AI_BASE_URL", "https://api.groq.com/openai/v1").strip().rstrip("/")
+SUPPORT_AI   = _int("SUPPORT_AI", 1)              # 1 = o'yinchilarga AI yordam (ilova + botga yozilgan xabar)
+SUPPORT_DAILY_LIMIT = _int("SUPPORT_DAILY_LIMIT", 30)   # bitta o'yinchi kuniga nechta savol bera oladi
+AI_DAILY_HOUR = _int("AI_DAILY_HOUR", 21)         # /ai_daily hisoboti soati (Toshkent vaqti)
+
+# Ixtiyoriy: ilova sahifasi uxlamaydigan bepul hostingda (GitHub Pages / Cloudflare Pages).
+# Berilsa, bot tugmalari shu manzilni ochadi va Render'ning «Application loading» sahifasi hech qachon chiqmaydi.
+# Masalan: https://abdulhamidqurbonov.github.io/case-bot
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+
+
+def app_url(case_id: str | None = None) -> str:
+    """Telegram'dagi «O'yin» tugmalari ochadigan manzil."""
+    from urllib.parse import urlencode
+    if FRONTEND_URL:
+        q = {"api": WEBAPP_URL}
+        if case_id:
+            q["case"] = case_id
+        return FRONTEND_URL + "/?" + urlencode(q)
+    return WEBAPP_URL + (f"/?case={case_id}" if case_id else "/")
+
+
 # Webhook maxfiy kaliti. Berilmasa, tokendan avtomatik yasaladi
 # (tokenning o'zi hech qayerda ochiq ko'rinmaydi).
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "").strip() or (

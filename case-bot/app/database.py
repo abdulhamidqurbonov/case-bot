@@ -246,6 +246,24 @@ CREATE TABLE IF NOT EXISTS live_bets (
     created_at   TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (round_id, telegram_id)
 );
+CREATE TABLE IF NOT EXISTS custom_skins (
+    key        TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    rarity     TEXT NOT NULL,
+    value      INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS custom_cases (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL,
+    badge        TEXT,
+    descr        TEXT,
+    title_html   TEXT,
+    items        JSONB NOT NULL,
+    post_file_id TEXT,
+    active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
 CREATE TABLE IF NOT EXISTS settings (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -255,6 +273,22 @@ CREATE TABLE IF NOT EXISTS skin_images (
     data         BYTEA NOT NULL,
     mime         TEXT NOT NULL,
     updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS user_events (
+    id           BIGSERIAL PRIMARY KEY,
+    telegram_id  BIGINT NOT NULL,
+    kind         TEXT NOT NULL,
+    code         TEXT,
+    detail       TEXT,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id           BIGSERIAL PRIMARY KEY,
+    scope        TEXT NOT NULL,
+    telegram_id  BIGINT NOT NULL,
+    role         TEXT NOT NULL,
+    content      TEXT NOT NULL,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Migratsiyalar (qayta ishga tushirilsa ham xavfsiz)
@@ -270,6 +304,7 @@ ALTER TABLE case_openings ADD COLUMN IF NOT EXISTS skin_key TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_avatar TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id64 TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referrals_referred ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_openings_user   ON case_openings(telegram_id);
@@ -283,13 +318,41 @@ CREATE INDEX IF NOT EXISTS idx_games_user      ON games(telegram_id, created_at 
 CREATE INDEX IF NOT EXISTS idx_crash_live      ON crash_rounds(telegram_id) WHERE status = 'live';
 CREATE INDEX IF NOT EXISTS idx_live_rounds_st  ON live_rounds(status, id DESC);
 CREATE INDEX IF NOT EXISTS idx_live_bets_round ON live_bets(round_id, status);
+CREATE INDEX IF NOT EXISTS idx_events_time     ON user_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_user     ON user_events(telegram_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_msgs         ON ai_messages(scope, telegram_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_users_username  ON users(LOWER(username));
+CREATE INDEX IF NOT EXISTS idx_balance_time    ON balance_log(created_at DESC);
+"""
+
+
+# Supabase barcha jadvallarni ochiq REST API (anon kalit) orqali chiqaradi. Har bir jadvalda RLS yoqib,
+# anon/authenticated rollardan huquqlarni olib qo'yamiz — tashqaridan o'qish/yozish butunlay yopiladi.
+# Bot o'zi jadvallar egasi sifatida ulanadi, shuning uchun unga RLS ta'sir qilmaydi.
+_LOCKDOWN = """
+DO $$
+DECLARE t record; r text;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+  END LOOP;
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', r);
+      EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', r);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM %I', r);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM %I', r);
+    END IF;
+  END LOOP;
+END $$;
 """
 
 
 def init_db() -> None:
     with db() as cur:
         cur.execute(_SCHEMA)
-    logger.info("✅ Baza tayyor")
+        cur.execute(_LOCKDOWN)
+    logger.info("✅ Baza tayyor (RLS yoqilgan, ochiq API yopiq)")
 
 
 # ── Ichki yordamchilar ────────────────────────────────────────────────
@@ -389,6 +452,7 @@ def get_or_create_user(telegram_id: int, username=None, first_name=None) -> tupl
 def get_me(telegram_id: int, username, first_name, cooldown_h: int) -> dict:
     with db() as cur:
         _ensure_user(cur, telegram_id, username, first_name)
+        cur.execute("UPDATE users SET last_seen_at = NOW() WHERE telegram_id = %s", (telegram_id,))
         cur.execute(
             """
             SELECT u.*,
@@ -1086,3 +1150,125 @@ def live_snapshot(limit_bets: int = 60) -> dict:
         cur.execute("SELECT crash FROM live_rounds WHERE status = 'crashed' ORDER BY id DESC LIMIT 20")
         hist = [float(x["crash"]) for x in cur.fetchall()]
         return {"now": now, "round": rnd, "bets": bets, "players": total, "hist": hist}
+
+
+# ── Bot orqali qo'shilgan case va skinlar ──────────────────────────────
+
+def catalog_rows() -> tuple[list[dict], list[dict], set[str]]:
+    with db() as cur:
+        cur.execute("SELECT key, name, rarity, value FROM custom_skins ORDER BY created_at")
+        skins = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT id, name, badge, descr, items FROM custom_cases WHERE active ORDER BY created_at")
+        cases = [dict(r) for r in cur.fetchall()]
+        cur.execute("SELECT value FROM settings WHERE key = 'hidden_cases'")
+        row = cur.fetchone()
+        hidden = set(filter(None, (row["value"] if row else "").split(",")))
+        return skins, cases, hidden
+
+
+def save_custom_case(c: dict) -> None:
+    with db() as cur:
+        cur.execute(
+            "INSERT INTO custom_cases (id, name, badge, descr, title_html, items, post_file_id) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (c["id"], c["name"], c.get("badge"), c.get("descr"), c.get("title_html"),
+             psycopg2.extras.Json([list(x) for x in c["items"]]), c.get("post_file_id")))
+        # Agar shu id avval yashirilgan bo'lsa — ko'rinadigan qilamiz
+        cur.execute("SELECT value FROM settings WHERE key = 'hidden_cases'")
+        row = cur.fetchone()
+        if row:
+            hidden = [x for x in row["value"].split(",") if x and x != c["id"]]
+            cur.execute("UPDATE settings SET value = %s WHERE key = 'hidden_cases'", (",".join(hidden),))
+
+
+def custom_case_ids() -> set[str]:
+    with db() as cur:
+        cur.execute("SELECT id FROM custom_cases")
+        return {r["id"] for r in cur.fetchall()}
+
+
+def get_custom_case(case_id: str) -> dict | None:
+    with db() as cur:
+        cur.execute("SELECT * FROM custom_cases WHERE id = %s", (case_id,))
+        r = cur.fetchone()
+        return dict(r) if r else None
+
+
+def hide_case(case_id: str, builtin: bool) -> None:
+    """Bot orqali qo'shilgan case — o'chiriladi (active=false); koddagi case — yashiriladi."""
+    with db() as cur:
+        if builtin:
+            cur.execute("SELECT value FROM settings WHERE key = 'hidden_cases'")
+            row = cur.fetchone()
+            hidden = set(filter(None, (row["value"] if row else "").split(","))) | {case_id}
+            cur.execute("INSERT INTO settings (key, value) VALUES ('hidden_cases', %s) "
+                        "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (",".join(sorted(hidden)),))
+        else:
+            cur.execute("DELETE FROM custom_cases WHERE id = %s", (case_id,))
+
+
+def unhide_case(case_id: str) -> None:
+    with db() as cur:
+        cur.execute("SELECT value FROM settings WHERE key = 'hidden_cases'")
+        row = cur.fetchone()
+        if row:
+            hidden = [x for x in row["value"].split(",") if x and x != case_id]
+            cur.execute("UPDATE settings SET value = %s WHERE key = 'hidden_cases'", (",".join(hidden),))
+
+
+def save_custom_skin(key: str, name: str, rarity: str, value: int) -> None:
+    with db() as cur:
+        cur.execute("INSERT INTO custom_skins (key, name, rarity, value) VALUES (%s,%s,%s,%s) "
+                    "ON CONFLICT (key) DO UPDATE SET name = EXCLUDED.name, rarity = EXCLUDED.rarity, "
+                    "value = EXCLUDED.value", (key, name, rarity, value))
+
+
+def all_user_ids() -> list[int]:
+    with db() as cur:
+        cur.execute("SELECT telegram_id FROM users ORDER BY created_at")
+        return [r["telegram_id"] for r in cur.fetchall()]
+
+
+# ── Ilovadagi hodisalar (xatolar) va AI suhbatlari ─────────────────────
+
+def add_event(telegram_id: int, kind: str, code: str | None, detail: str | None = None) -> None:
+    with db() as cur:
+        # Bitta foydalanuvchidan kuniga 300 tadan ortiq yozilmaydi (spamdan himoya)
+        cur.execute("SELECT COUNT(*) AS n FROM user_events WHERE telegram_id = %s "
+                    "AND created_at > NOW() - INTERVAL '1 day'", (telegram_id,))
+        if cur.fetchone()["n"] >= 300:
+            return
+        cur.execute("INSERT INTO user_events (telegram_id, kind, code, detail) VALUES (%s,%s,%s,%s)",
+                    (telegram_id, kind[:20], (code or "")[:60] or None, (detail or "")[:300] or None))
+
+
+def recent_user_errors(telegram_id: int, limit: int = 8) -> list[dict]:
+    with db() as cur:
+        cur.execute("SELECT code, detail, created_at FROM user_events WHERE telegram_id = %s AND kind = 'error' "
+                    "AND created_at > NOW() - INTERVAL '2 days' ORDER BY id DESC LIMIT %s", (telegram_id, limit))
+        return [dict(r) for r in cur.fetchall()]
+
+
+def ai_history(scope: str, telegram_id: int, limit: int = 16) -> list[dict]:
+    with db() as cur:
+        cur.execute("SELECT role, content, created_at FROM ai_messages WHERE scope = %s AND telegram_id = %s "
+                    "ORDER BY id DESC LIMIT %s", (scope, telegram_id, limit))
+        return [dict(r) for r in reversed(cur.fetchall())]
+
+
+def ai_save(scope: str, telegram_id: int, role: str, content: str) -> None:
+    with db() as cur:
+        cur.execute("INSERT INTO ai_messages (scope, telegram_id, role, content) VALUES (%s,%s,%s,%s)",
+                    (scope, telegram_id, role, content[:8000]))
+
+
+def ai_clear(scope: str, telegram_id: int) -> None:
+    with db() as cur:
+        cur.execute("DELETE FROM ai_messages WHERE scope = %s AND telegram_id = %s", (scope, telegram_id))
+
+
+def ai_count_today(scope: str, telegram_id: int) -> int:
+    with db() as cur:
+        cur.execute("SELECT COUNT(*) AS n FROM ai_messages WHERE scope = %s AND telegram_id = %s AND role = 'user' "
+                    "AND created_at > NOW() - INTERVAL '1 day'", (scope, telegram_id))
+        return cur.fetchone()["n"]

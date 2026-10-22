@@ -19,7 +19,8 @@
   --r-sm:8px; --r:12px; --r-lg:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.4}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.4;max-width:100%;overflow-x:hidden}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
 body{overscroll-behavior:none;padding-bottom:calc(74px + env(safe-area-inset-bottom,0px))}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input{font:inherit;color:inherit}
@@ -29,10 +30,10 @@ img{display:block;max-width:100%}
 .mut{color:var(--mut)} .hide{display:none!important}
 
 /* ── header ── */
-.top{position:sticky;top:0;z-index:30;background:var(--bg);box-shadow:0 1px 0 var(--line);padding:10px 14px 8px;display:flex;align-items:center;gap:10px}
-.brand{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.02em;display:flex;align-items:center;gap:7px}
+.top{position:sticky;top:0;z-index:30;background:var(--bg);box-shadow:0 1px 0 var(--line);padding:10px 14px 8px;display:flex;align-items:center;gap:8px;min-width:0}
+.brand{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden}
 .brand i{width:10px;height:22px;background:var(--red);transform:skewX(-14deg);box-shadow:0 0 14px var(--redglow)}
-.bal{margin-left:auto;display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 3px 3px 12px;gap:8px}
+.bal{margin-left:auto;display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 3px 3px 10px;gap:6px;flex:0 0 auto;white-space:nowrap}
 .bal b{font-family:var(--disp);font-size:18px}
 .bal .plus{width:30px;height:30px;border-radius:50%;background:var(--red);font-size:20px;font-weight:700;line-height:30px;text-align:center}
 
@@ -79,6 +80,8 @@ img{display:block;max-width:100%}
 .tile .im img{width:100%;height:100%;object-fit:contain}
 .tile .im svg{max-height:62px;max-width:100%}
 #invGrid .tile,#ctGrid .tile,#cvItems .tile{content-visibility:auto;contain-intrinsic-size:auto 132px}
+/* Ekrandan tashqaridagi bloklar chizilmaydi — bo'limga o'tish yengil */
+#histList,#lbList,#wdList,#taskBox,#refBox,#pfBest{content-visibility:auto;contain-intrinsic-size:auto 220px}
 .tile .wp{font-size:11px;color:var(--mut);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .sk{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .vl{font-family:var(--disp);font-size:15px;margin-top:2px}
@@ -93,6 +96,8 @@ img{display:block;max-width:100%}
 
 /* ── case page / reel ── */
 .cv-top{display:flex;align-items:center;gap:12px}
+.cv-descr{color:var(--mut);font-size:13.5px;margin-top:8px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cv-descr:empty{display:none}
 .cv-top .ci{flex:0 0 96px;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .reels{margin:14px -14px 8px;display:flex;flex-direction:column;gap:6px}
 .reel{position:relative;height:var(--rh,126px);overflow:hidden;background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -111,19 +116,24 @@ img{display:block;max-width:100%}
 .fast input{accent-color:var(--red);width:18px;height:18px}
 
 /* ── buttons & inputs ── */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;border-radius:var(--r);background:var(--red);font-family:var(--disp);font-size:20px;font-weight:700;box-shadow:0 6px 24px -8px var(--redglow);transition:transform .08s}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;padding:0 14px;border-radius:var(--r);background:var(--red);font-family:var(--disp);font-size:clamp(16px,4.6vw,20px);font-weight:700;box-shadow:0 6px 24px -8px var(--redglow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .btn:active{transform:scale(.98)}
 .btn:disabled{background:var(--card2);color:var(--dim);box-shadow:none}
 .btn.ghost{background:var(--card);box-shadow:none;border:1px solid var(--line)}
 .btn.green{background:var(--green);color:#06210f;box-shadow:none}
 .btn.sm{height:42px;font-size:17px}
-.btns{display:flex;gap:8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns>.btn{flex:1 1 150px}
+#steamSave{flex:1 1 100px}
+#steamHelp{flex:1.6 1 205px}
+.chev{display:inline-flex;width:1em;height:1em;align-items:center;justify-content:center;line-height:1}
 .field{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px}
 .field label{display:block;font-size:12px;color:var(--mut)}
 .field input{width:100%;background:none;border:0;outline:0;font-family:var(--disp);font-size:22px;font-weight:700}
 .field input[type=text]{font-family:var(--body);font-size:14px;font-weight:500}
-.chips{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-.chips button{background:var(--card2);border-radius:6px;padding:5px 10px;font-weight:600;font-size:13px}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:0 0 auto;background:var(--card2);border-radius:8px;padding:7px 12px;font-weight:600;font-size:13px;white-space:nowrap}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* ── games hub ── */
@@ -132,7 +142,8 @@ img{display:block;max-width:100%}
 .gm .ic{flex:0 0 56px;height:56px;border-radius:14px;background:var(--bg2);display:flex;align-items:center;justify-content:center}
 .gm .ic svg{width:32px;height:32px}
 .gm .t{font-family:var(--disp);font-size:21px}
-.gm .d{color:var(--mut);font-size:13.5px}
+.gm .d{color:var(--mut);font-size:13.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gm>div:last-of-type{min-width:0}
 .gm .rtp{position:absolute;right:12px;top:10px;font-size:11px;color:var(--dim)}
 .gm>div:not(.art){position:relative;z-index:1}
 .gm.has-art{min-height:108px;padding-right:42%}
@@ -142,7 +153,12 @@ img{display:block;max-width:100%}
 .gbanner{height:132px;margin:0 -14px 4px;position:relative;overflow:hidden}
 .gbanner img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent)}
 /* Bo'limga o'tish — yengil, GPU'da */
-.screen.on{animation:scIn .14s ease-out}
+.screen.on{animation:scFade .18s ease-out}
+.screen.on.in-r{animation:scR .26s cubic-bezier(.2,.9,.25,1)}
+.screen.on.in-l{animation:scL .26s cubic-bezier(.2,.9,.25,1)}
+@keyframes scFade{from{opacity:0}}
+@keyframes scR{from{opacity:0;transform:translate3d(28px,0,0)}}
+@keyframes scL{from{opacity:0;transform:translate3d(-28px,0,0)}}
 @keyframes scIn{from{opacity:0}}
 .reel .strip{transform:translate3d(0,0,0)}
 
@@ -191,7 +207,7 @@ img{display:block;max-width:100%}
 .cr-auto .field{padding:4px 10px;background:var(--bg2);opacity:.45;transition:opacity .2s}
 .cr-auto.on .field{opacity:1}
 .cr-auto .field input{font-size:18px}
-.crbtn{flex:0 0 52%;width:auto;height:auto;min-height:60px;flex-direction:column;gap:0;line-height:1.05;font-size:19px}
+.crbtn{padding:0 8px;flex:0 0 52%;width:auto;height:auto;min-height:60px;flex-direction:column;gap:0;line-height:1.05;font-size:19px}
 .cr-auto .field{flex:0 0 76px}
 .cr-auto .field input{font-size:16px!important}
 .cr-auto .chips{flex:1;min-width:0;scrollbar-width:none}
@@ -301,14 +317,17 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 .nav svg{width:24px;height:24px}
 .nav button.on{color:var(--text)}
 .nav button.on svg{color:var(--red2)}
+.nav::before{content:"";position:absolute;top:0;left:6px;width:calc((100% - 12px) / 4);height:2px;background:var(--red2);border-radius:2px;box-shadow:0 0 10px var(--redglow);transform:translate3d(calc(var(--ni,0) * 100%),0,0);transition:transform .32s cubic-bezier(.2,.9,.25,1)}
+.nav button svg{transition:transform .2s cubic-bezier(.2,.9,.25,1)}
+.nav button.on svg{transform:translate3d(0,-1px,0) scale(1.08)}
 .nav .dot{position:absolute;top:4px;left:56%;width:8px;height:8px;border-radius:50%;background:var(--red2);display:none}
 .nav .dot.on{display:block}
 
 /* ── sheet / toast ── */
 .ov{position:fixed;inset:0;z-index:60;background:rgba(5,1,2,.72);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .2s}
 .ov.on{opacity:1;pointer-events:auto}
-.sheet{width:100%;max-height:88vh;overflow-y:auto;background:var(--bg2);border-radius:20px 20px 0 0;border-top:1px solid var(--line);padding:8px 14px calc(16px + env(safe-area-inset-bottom,0px));transform:translateY(30px);transition:transform .22s}
-.ov.on .sheet{transform:none}
+.sheet{width:100%;max-width:560px;margin:0 auto;max-height:88vh;overflow-y:auto;background:var(--bg2);border-radius:20px 20px 0 0;border-top:1px solid var(--line);padding:8px 14px calc(16px + env(safe-area-inset-bottom,0px));transform:translate3d(0,100%,0);transition:transform .34s cubic-bezier(.2,.9,.25,1);will-change:transform}
+.ov.on .sheet{transform:translate3d(0,0,0)}
 .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
 .big{text-align:center;padding:6px 0 12px}
 .big .im{height:150px;display:flex;align-items:center;justify-content:center}
@@ -349,6 +368,85 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 .snd svg{width:18px;height:18px}
 .g-snd{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;z-index:2}
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+/* ── Ilovadek: matn belgilanmaydi, uzoq bosishda menyu chiqmaydi ── */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,.st-row input,.ref input{-webkit-user-select:text;user-select:text}
+img,svg{-webkit-user-drag:none;user-drag:none}
+/* Skroll chizig'i ko'rinmaydi — ilovalardagidek (g'ildirak va barmoq bilan skroll ishlayveradi) */
+html{scrollbar-width:none}
+::-webkit-scrollbar{width:0;height:0;display:none}
+/* Keng oyna (kompyuter/planshet): ilova markazda, telefon kengligida */
+@media (min-width:600px){
+  .top{padding-left:calc((100% - 560px) / 2 + 14px);padding-right:calc((100% - 560px) / 2 + 14px)}
+  .feed,.screen{max-width:560px;margin-left:auto;margin-right:auto}
+  .nav{left:50%;right:auto;width:560px;transform:translateX(-50%);border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:14px 14px 0 0}
+  .toast{max-width:520px}
+}
+/* ── Yordam (AI support) ── */
+.help-card{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:var(--text);margin:4px 0 2px;padding:12px 14px;border-radius:var(--r);background:linear-gradient(135deg,rgba(227,36,43,.16),rgba(227,36,43,.04));border:1px solid rgba(227,36,43,.35)}
+.help-card .hi,.sp-av{flex:0 0 40px;height:40px;border-radius:12px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 16px var(--redglow)}
+.help-card b{display:block;font-size:15px}.help-card span{display:block;color:var(--mut);font-size:13px}
+.help-card .ar{margin-left:auto;color:var(--mut);font-size:22px;line-height:1}
+.help-chip{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:45;transform:translate3d(-50%,16px,0);opacity:0;pointer-events:none;background:var(--card2);border:1px solid rgba(227,36,43,.55);color:var(--text);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;box-shadow:0 10px 28px rgba(0,0,0,.55);white-space:nowrap;transition:transform .32s cubic-bezier(.2,.9,.25,1),opacity .25s}
+.help-chip.on{transform:translate3d(-50%,0,0);opacity:1;pointer-events:auto}
+.help-chip.on:active{transform:translate3d(-50%,0,0) scale(.96)}
+.sp-head{display:flex;gap:10px;align-items:center;padding:0 2px 10px;border-bottom:1px solid var(--line)}
+.sp-head b{display:block;font-size:16px}.sp-head span{display:block;font-size:12.5px;color:var(--mut)}
+.sp-head .on-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:1px}
+.sp-log{display:flex;flex-direction:column;gap:8px;padding:12px 0 8px;min-height:140px}
+.bub{max-width:86%;padding:9px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;animation:bubIn .26s cubic-bezier(.2,.9,.25,1)}
+.bub.ai{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:6px}
+.bub.me{align-self:flex-end;background:var(--red);color:#fff;border-bottom-right-radius:6px}
+.bub.typing{padding:12px 14px}
+.bub.typing i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mut);margin:0 2px;animation:tdot 1s infinite}
+.bub.typing i:nth-child(2){animation-delay:.15s}.bub.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translate3d(0,-3px,0)}}
+@keyframes bubIn{from{opacity:0;transform:translate3d(0,8px,0)}}
+.sp-sug{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:10px}
+.sp-sug button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;color:var(--text);text-align:left}
+.sp-in{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));display:flex;gap:8px;align-items:flex-end;background:var(--bg2);padding:8px 0 calc(4px + env(safe-area-inset-bottom,0px))}
+.sp-in textarea{flex:1;min-width:0;resize:none;height:46px;max-height:104px;background:var(--card);border:1px solid var(--line);border-radius:14px;color:var(--text);padding:11px 12px;font:inherit;font-size:16px;line-height:1.35;outline:none;transition:border-color .2s}
+.sp-in textarea:focus{border-color:var(--red2)}
+.sp-in button{flex:0 0 46px;height:46px;border-radius:14px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff}
+.sp-in button svg{width:22px;height:22px}
+.sp-in button:disabled{opacity:.45}
+.sp-left{font-size:11.5px;color:var(--dim);text-align:center;margin-top:4px}
+/* ── Bosish effekti: barcha tugma va kartalar (faqat transform — GPU, silliq) ── */
+button,.tile,.case,.gm,.li,[role=button]{transition:transform .16s cubic-bezier(.2,.9,.25,1),background-color .2s,border-color .2s,opacity .2s}
+button:active,.case:active,.gm:active,[role=button]:active{transform:scale(.96)}
+.btn:active{transform:scale(.975)}
+.tile:active{transform:scale(.97)}
+.nav button:active{transform:none}
+.nav button:active svg{transform:scale(.88)}
+button:disabled:active{transform:none}
+/* ── Kichik ekranlar (320–379 px) ── */
+@media (max-width:379px){
+  .top{padding:8px 10px 7px;gap:6px}
+  .brand{font-size:18px;gap:5px}.brand i{width:8px;height:18px}
+  .snd{width:32px;height:32px}
+  .bal{padding:2px 2px 2px 8px;gap:4px}.bal b{font-size:16px}.bal .plus{width:28px;height:28px;line-height:28px;font-size:18px}
+  .screen{padding-left:10px;padding-right:10px}
+  .feed{padding-left:10px;padding-right:10px}
+  .h1{font-size:23px}
+  .cases{gap:8px}
+  .grid3{gap:6px}
+  .tile .sk{font-size:11.5px}.tile .vl{font-size:14px}
+  .gm{padding:12px;gap:10px}.gm .t{font-size:19px}.gm .d{font-size:12.5px}
+  .gm.has-art{padding-right:34%}.gm .art{width:46%}
+  .crash .mx b{font-size:48px}.crash.waiting .mx b{font-size:70px}.crash .mx span{font-size:13px}
+  .cr-panel{padding:10px}.crbtn{flex-basis:52%;font-size:16px}.crbtn small{font-size:12px}
+  .cr-row .field{min-width:0;padding:8px 10px}
+  .cr-auto{gap:8px}.cr-auto .field{flex-basis:66px}
+  .stat b{font-size:18px}.stat span{font-size:11px}
+  .dice-num{font-size:54px}
+  .qty button{font-size:15px}
+  .reels{margin-left:-10px;margin-right:-10px}
+  .gbanner,.crash{margin-left:-2px;margin-right:-2px}
+  .ref button{padding:0 10px}
+}
+@media (max-width:339px){ .brand{font-size:15px} .snd{width:30px;height:30px} .snd svg{width:16px;height:16px} .bal b{font-size:15px} }
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 </style>
 </head>
 <body>
@@ -386,7 +484,7 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 </div>
 
 <header class="top">
-  <div class="brand"><i></i>CASEVAULT</div>
+  <div class="brand"><i></i><span class="t">CASEVAULT</span></div>
   <button class="snd" data-snd aria-label="Ovoz" style="margin-left:auto"></button>
   <div class="bal" style="margin-left:0" id="balBtn" role="button" aria-label="Balansni to'ldirish">
     <span>⭐</span><b id="bal">0</b><span class="plus">+</span>
@@ -404,8 +502,9 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
   <button class="back" data-back>‹ Case'lar</button>
   <div class="cv-top">
     <div class="ci" id="cvImg"></div>
-    <div><div class="h1" id="cvName" style="margin:0"></div><div class="mut" id="cvSub"></div></div>
+    <div style="min-width:0"><div class="h1" id="cvName" style="margin:0"></div><div class="mut" id="cvSub"></div></div>
   </div>
+  <div class="cv-descr" id="cvDescr"></div>
   <div class="reels" id="reels"></div>
   <div class="qty" id="qty"></div>
   <label class="fast"><input type="checkbox" id="fast"> Tez ochish</label>
@@ -520,6 +619,7 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
     <div class="stat"><b id="pfGames">0</b><span>o'yin</span></div>
     <div class="stat"><b id="pfRefs">0</b><span>do'st</span></div>
   </div>
+  <div id="helpBox"></div>
   <div id="pfBest"></div>
 
   <div class="h2">Steam Trade URL</div>
@@ -562,6 +662,7 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
   <button data-tab="prof"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6 8-6s7 1.5 8 6"/></svg>Profil</button>
 </nav>
 
+<button class="help-chip" id="helpChip">🤖 Yordam kerakmi?</button>
 <div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -569,6 +670,13 @@ input[type=range]{width:100%;accent-color:var(--red);height:28px}
 const tg = window.Telegram?.WebApp;
 try { tg?.ready(); tg?.expand(); tg?.setHeaderColor?.('#12070a'); tg?.setBackgroundColor?.('#12070a'); tg?.disableVerticalSwipes?.(); } catch (e) {}
 const initData = tg?.initData || '';
+// Ilova sahifasi alohida (uxlamaydigan) hostingda bo'lsa, server manzili tugmadagi ?api= dan olinadi.
+// Bunday tugmani faqat botning o'zi yubora oladi. Bo'lmasa — shu saytning o'zi (Render).
+const API = (() => {
+  try { const a = new URLSearchParams(location.search).get('api') || '';
+    if (/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(a)) return a.replace(/\/$/, ''); } catch (e) {}
+  return '';
+})();
 
 const S = { me: null, cases: [], caseById: {}, skins: [], skinByKey: {}, rar: {}, pk: [], cfg: {}, imgV: 0,
   refLink: '', tasks: [], inv: null, invSig: '', prof: {}, cur: 'cases', busy: false, noImg: new Set(), media: new Set(),
@@ -586,7 +694,7 @@ async function api(path, body) {
   const opt = body === undefined ? { method: 'GET' }
     : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) };
   try {
-    const r = await fetch(path, opt);
+    const r = await fetch(API + path, opt);
     let d = {};
     try { d = await r.json(); } catch (e) {}
     if (!r.ok) return { error: typeof d.detail === 'string' ? d.detail : (r.status === 422 ? 'bad_input' : 'server_error') };
@@ -627,10 +735,12 @@ const ERR = {
   bad_input: "Ma'lumot noto'g'ri kiritildi",
   server_error: "Serverda xatolik. Birozdan keyin urinib ko'ring",
 };
+const errText = code => { const m = ERR[code] ?? ERR.server_error; return typeof m === 'function' ? m() : m; };
 function err(code) {
-  const m = ERR[code] ?? ERR.server_error;
-  toast(typeof m === 'function' ? m() : m);
+  toast(errText(code));
   notify('error');
+  track('error', code);
+  helpHint(code);
 }
 
 let toastT;
@@ -643,7 +753,7 @@ function toast(msg) {
 const rc = r => S.rar[r]?.color || '#B0C3D9';
 const GUN = c => `<svg viewBox="0 0 120 50" aria-hidden="true"><path fill="${c}" opacity=".9" d="M3 20h64l5-6h19l2 4h22v7h-8l-2 4H77l-7 13H57l5-13H45l-6 8h-9l2-8H3z"/></svg>`;
 const CASESVG = c => `<svg viewBox="0 0 120 90" aria-hidden="true"><rect x="8" y="20" width="104" height="62" rx="9" fill="#2c141c" stroke="${c}" stroke-width="3"/><rect x="8" y="36" width="104" height="9" fill="${c}"/><rect x="47" y="8" width="26" height="15" rx="4" fill="none" stroke="${c}" stroke-width="3"/><rect x="52" y="33" width="16" height="15" rx="2" fill="#12070a" stroke="${c}" stroke-width="2.5"/></svg>`;
-const mediaUrl = key => `/img/${encodeURIComponent(key)}?v=${S.imgV}`;
+const mediaUrl = key => `${API}/img/${encodeURIComponent(key)}?v=${S.imgV}`;
 function pic(key, color, type = 'gun') {
   // Rasm yuklanmagan kalitlarga so'rov yubormaymiz — darhol chizma ko'rsatiladi (tez)
   if (!key || S.noImg.has(key) || !S.media.has(key)) return type === 'case' ? CASESVG(color) : GUN(color);
@@ -666,9 +776,10 @@ function tileHTML(it, o = {}) {
 }
 
 /* ── Balans ───────────────────────────────────────── */
+const fmtShort = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.0', '') + 'M' : n >= 1e5 ? Math.floor(n / 1e3) + 'K' : fmt(n);
 function setBal(n) {
   if (n == null) return;
-  S.me.balance = n; $('bal').textContent = fmt(n);
+  S.me.balance = n; $('bal').textContent = fmtShort(n); $('bal').title = fmt(n);
   if (S.cur === 'case') renderOpenBtn();
 }
 async function refreshMe() {
@@ -679,29 +790,53 @@ async function refreshMe() {
 
 /* ── Navigatsiya ──────────────────────────────────── */
 const CHILD = { case: 'cases', upgrade: 'games', contract: 'games', crash: 'games', dice: 'games' };
-function show(sc) {
-  document.querySelectorAll('.screen').forEach(e => e.classList.toggle('on', e.id === 'sc-' + sc));
-  S.cur = sc; window.scrollTo(0, 0);
+document.addEventListener('touchstart', () => {}, { passive: true });   // iOS'da :active effekti ishlashi uchun
+const scrollMem = {};                                                    // har bo'limning skroll joyi
+const TAB_ORDER = ['cases', 'games', 'inv', 'prof'];
+let animUntil = 0;                                                       // bo'lim animatsiyasi tugaydigan vaqt
+// Og'ir chizishni animatsiya tugaguncha kechiktiramiz — o'tish hech qachon qotmaydi
+const afterAnim = fn => { const d = animUntil - performance.now(); d > 0 ? setTimeout(() => afterAnim(fn), d + 20) : fn(); };
+function show(sc, dir) {
+  const next = $('sc-' + sc);
+  animUntil = performance.now() + 300;
+  if (S.cur) scrollMem[S.cur] = window.scrollY;
+  if (sc !== 'crash') sfx.fly(false);                    // o'yindan chiqildi — dvigatel ovozi o'chadi
+  document.querySelectorAll('.screen.on').forEach(e => { if (e !== next) e.classList.remove('on', 'in-r', 'in-l'); });
+  next.classList.remove('in-r', 'in-l');
+  if (dir) { void next.offsetWidth; next.classList.add(dir); }
+  next.classList.add('on');
+  // Asosiy bo'limlarga qaytilganda — avvalgi joyiga; o'yin/case sahifasi — tepadan
+  window.scrollTo(0, (TAB_ORDER.includes(sc) && dir !== 'fresh') ? (scrollMem[sc] || 0) : 0);
+  S.cur = sc;
+  trackScreen(sc);
   document.body.classList.toggle('focus', sc === 'crash');
   try { CHILD[sc] ? tg?.BackButton?.show() : tg?.BackButton?.hide(); } catch (e) {}
 }
 function tab(t) {
   if (S.busy) return;
+  const from = TAB_ORDER.indexOf(CHILD[S.cur] || S.cur), to = TAB_ORDER.indexOf(t);
+  if (t === S.cur) return;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  show(t);
+  $('nav').style.setProperty('--ni', to);
+  show(t, to > from ? 'in-r' : to < from ? 'in-l' : '');
   if (t === 'inv') { $('invDot').classList.remove('on'); if (S.inv) renderInv(); loadInv(); }
   if (t === 'prof') loadProfile();
 }
 function back() {
   if (S.busy) return;
-  if (S.cur in CHILD) show(CHILD[S.cur]);
+  if (S.cur in CHILD) show(CHILD[S.cur], 'in-l');
 }
-document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => { haptic(); sfx.click(); tab(b.dataset.tab); }));
+// Barmoq tekkan zahoti o'tadi (click'ni kutmaydi) — ilovalardagidek tez javob
+document.querySelectorAll('#nav button').forEach(b => {
+  const go = () => { if (b.dataset.tab === S.cur) return; haptic(); sfx.click(); tab(b.dataset.tab); };
+  b.addEventListener('pointerdown', e => { if (e.button === 0) go(); });
+  b.addEventListener('click', e => { if (e.detail === 0) go(); });     // klaviatura
+});
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', back));
 try { tg?.BackButton?.onClick(back); } catch (e) {}
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { haptic(); openGame(b.dataset.go); }));
 function openGame(g) {
-  show(g);
+  show(g, 'in-r');
   if (g === 'upgrade') renderUp();
   if (g === 'contract') { S.ct.clear(); if (S.inv) renderCt(); loadInv().then(renderCt); }
   if (g === 'crash') crashEnter();
@@ -766,6 +901,7 @@ function openCase(id) {
   S.case = c; S.qty = 1;
   $('cvImg').innerHTML = pic('case_' + c.id, c.free ? '#3ddc84' : '#e3242b', 'case');
   $('cvName').textContent = c.name;
+  $('cvDescr').textContent = c.descr || '';
   $('cvSub').textContent = c.free ? `Har ${S.cfg.freeCooldownH} soatda bepul` : `${fmt(c.price)} ⭐ · ${c.items.length} xil skin`;
   $('qty').classList.toggle('hide', !!c.free);
   $('qty').innerHTML = [1, 2, 3, 4, 5].map(n => `<button data-q="${n}" class="${n === 1 ? 'on' : ''}">${n}x</button>`).join('');
@@ -775,7 +911,7 @@ function openCase(id) {
     idleReels(); renderOpenBtn();
   }));
   $('cvItems').innerHTML = c.items.map(it => tileHTML(it, { chance: it.chance })).join('');
-  show('case'); idleReels(); renderOpenBtn();
+  show('case', 'in-r'); idleReels(); renderOpenBtn();
 }
 
 function renderOpenBtn() {
@@ -894,7 +1030,7 @@ async function loadInv() {
   const d = await api('/api/inventory', {});
   if (d.error) { if (!S.inv) err(d.error); return S.inv || []; }
   const sig = JSON.stringify(d.items);
-  if (sig !== S.invSig || !S.inv) { S.invSig = sig; S.inv = d.items; if (S.cur === 'inv') renderInv(); }
+  if (sig !== S.invSig || !S.inv) { S.invSig = sig; S.inv = d.items; S.cur === 'inv' ? afterAnim(renderInv) : idle(renderInv); }
   return S.inv;
 }
 function renderInv() {
@@ -906,8 +1042,8 @@ function renderInv() {
   $('sellAll').disabled = !items.length;
   $('invGrid').innerHTML = items.length ? items.map(it => tileHTML(it, { attrs: `data-id="${it.id}"` })).join('')
     : `<div class="empty" style="grid-column:1/-1"><b>Inventar bo'sh</b>Case oching yoki o'yinlarda skin yutib oling</div>`;
-  $('invGrid').querySelectorAll('[data-id]').forEach(t => t.addEventListener('click', () => itemSheet(+t.dataset.id)));
 }
+$('invGrid').addEventListener('click', e => { const t = e.target.closest('[data-id]'); if (t) itemSheet(+t.dataset.id); });
 $('sellAll').addEventListener('click', async () => {
   const items = S.inv || []; if (!items.length) return;
   const sum = items.reduce((a, b) => a + b.sell, 0);
@@ -926,7 +1062,7 @@ function itemSheet(id) {
     : it.value < S.cfg.minWithdraw ? `<div class="wd-note">Chiqarish uchun kamida ${fmt(S.cfg.minWithdraw)} ⭐ qiymatli skin kerak.</div>` : '';
   openSheet(`${bigHTML(it)}
     <div class="btns" style="margin-bottom:8px"><button class="btn green" id="isSell">Sotish +${fmt(it.sell)} ⭐</button><button class="btn ghost" id="isUp">Upgrade</button></div>
-    <button class="btn ${canWd ? '' : 'ghost'}" id="isWd">${open ? "Steam'ga chiqarish" : "Steam'ga chiqarish · tez orada"}</button>${note}`);
+    <button class="btn ${canWd ? '' : 'ghost'}" id="isWd">${open ? "Steam'ga chiqarish" : "Steam · tez orada"}</button>${note}`);
   $('isSell').onclick = async () => {
     $('isSell').disabled = true;
     const r = await api('/api/sell', { ids: [id] });
@@ -1142,7 +1278,7 @@ function crLoop(now) {
       CR.cd = sec; const b = $('crMx');
       b.textContent = sec; b.classList.remove('tick'); void b.offsetWidth; b.classList.add('tick');
       $('crBox').classList.toggle('soon', sec <= 3);
-      $('crMsg').textContent = sec > 0 ? 'soniyadan keyin uchadi · stavka qo\'ying' : '';
+      $('crMsg').textContent = sec > 0 ? 'soniyadan keyin uchadi' : '';
       if (sec > 0 && sec <= 3) sfx.dialTick();
     }
     if (left <= 0) crPhase('flying');
@@ -1150,7 +1286,7 @@ function crLoop(now) {
   const el = crDraw(now);
   if (CR.state === 'flying') {
     CR.m = Math.min(Math.exp(k * el), S.cfg.crashMax || 500);
-    $('crMx').textContent = CR.m.toFixed(2) + 'x'; sfx.fly(CR.m);
+    $('crMx').textContent = CR.m.toFixed(2) + 'x'; if (S.cur === 'crash' && !sfx.flying) sfx.fly(true); sfx.fly(CR.m);
     if (CR.my && CR.my.status === 'active') crButton();
   }
   CR.raf = S.cur === 'crash' ? requestAnimationFrame(crLoop) : 0;
@@ -1167,15 +1303,15 @@ function crPhase(ph) {
     box.classList.remove('boom', 'cashed'); CR.endAt = 0; CR.m = 1; CR.cd = null;
   } else if (ph === 'flying') {
     $('crBox').classList.remove('soon'); $('crMx').classList.remove('tick');
-    $('crMx').textContent = '1.00x'; $('crMsg').textContent = ''; sfx.fly(true);
+    $('crMx').textContent = '1.00x'; $('crMsg').textContent = ''; if (S.cur === 'crash') sfx.fly(true);
   } else if (ph === 'crashed') {
     CR.endAt = Math.min(performance.now(), CR.takeoff + Math.log(Math.max(1, CR.crash || 1)) / crK() * 1000);
-    if (CR.lateJoin) { CR.endAt -= 2000; CR.lateJoin = false; } else { sfx.boom(); }
+    if (CR.lateJoin) { CR.endAt -= 2000; CR.lateJoin = false; } else if (S.cur === 'crash') { sfx.boom(); }
     sfx.fly(false);
     $('crMx').textContent = (CR.crash || 1).toFixed(2) + 'x'; box.classList.add('boom');
     const mine = CR.my;
     if (mine && mine.status === 'cashed') { box.classList.add('cashed'); $('crMsg').textContent = `Uchib ketdi · siz ${mine.cash.toFixed(2)}x da yechdingiz: +${fmt(mine.payout)} ⭐`; }
-    else { box.classList.remove('cashed'); $('crMsg').textContent = 'UCHIB KETDI'; if (mine) { notify('error'); sfx.lose(); } }
+    else { box.classList.remove('cashed'); $('crMsg').textContent = 'UCHIB KETDI'; if (mine && S.cur === 'crash') { notify('error'); sfx.lose(); } }
   }
   crButton();
 }
@@ -1190,7 +1326,7 @@ function crApply(d, t0, t1) {
   CR.my = d.my;
   // Mening stavkam yechildi (qo'lda yoki avto) — bir marta xabar beramiz
   if (d.my && d.my.status === 'cashed' && (!prev || prev.status !== 'cashed') && r && CR.round === r.id) {
-    $('crBox').classList.add('cashed'); notify('success'); sfx.cashout();
+    $('crBox').classList.add('cashed'); notify('success'); if (S.cur === 'crash') sfx.cashout();
     $('crMsg').textContent = `${d.my.cash.toFixed(2)}x da yechildi · +${fmt(d.my.payout)} ⭐`; toast(`+${fmt(d.my.payout)} ⭐`); refreshMe();
   }
   if (!r) { CR.state = 'idle'; $('crMsg').textContent = 'Raund boshlanmoqda…'; crButton(); return crBets(d); }
@@ -1251,7 +1387,7 @@ function crButton() {
   } else if (CR.state === 'flying' && mine && my.status === 'cashed') {
     b.classList.add('wait'); b.disabled = true; set(`+${fmt(my.payout)} ⭐`, `${my.cash.toFixed(2)}x da yechdingiz`);
   } else if (CR.queued) { b.classList.add('wait'); set('Navbatda · bekor qilish', `keyingi raund: ${fmt(CR.queued.bet)} ⭐`); }
-  else set('Keyingi raundga stavka', `${fmt(bet)} ⭐`);
+  else set('Keyingi raund', `stavka · ${fmt(bet)} ⭐`);
 }
 
 function crHistRender() {
@@ -1349,6 +1485,7 @@ $('dcBtn').addEventListener('click', async () => {
 
 /* ── Do'kon ───────────────────────────────────────── */
 function openShop() {
+  track('screen', 'shop');
   openSheet(`<div class="h2" style="margin-top:0">Balansni to'ldirish</div>
     <div class="mut" style="font-size:14px;margin-bottom:12px">Telegram Stars orqali. Pul darhol balansga tushadi.</div>
     <div class="list">${S.pk.map(p => `<button class="li" data-pk="${esc(p.id)}" style="padding:14px 12px"><span style="font-size:22px">⭐</span>
@@ -1384,7 +1521,7 @@ async function loadProfile() {
   renderProfile();                                   // keshdan darhol
   const [p, h, w, lb] = await Promise.all([api('/api/profile', {}), api('/api/history', {}), api('/api/withdrawals', {}), api('/api/leaderboard')]);
   Object.assign(S.prof, { p: p.error ? S.prof.p : p, h: h.error ? S.prof.h : h, w: w.error ? S.prof.w : w, lb: lb.error ? S.prof.lb : lb });
-  if (S.cur === 'prof') renderProfile();
+  if (S.cur === 'prof') afterAnim(renderProfile);
 }
 function depBar() {
   const p = Math.min(100, Math.round((S.me.deposited || 0) / Math.max(1, S.cfg.withdrawMinDeposit) * 100));
@@ -1655,13 +1792,24 @@ const sfx = (() => {
     if (!ensure()) return;
     await Promise.all(keys.filter(k => k.startsWith('snd_')).map(async k => {
       try {
-        const r = await fetch(`/img/${k}?v=${ver}`); if (!r.ok) return;
+        const r = await fetch(`${API}/img/${k}?v=${ver}`); if (!r.ok) return;
         const ab = await r.arrayBuffer();
         buf[k.slice(4)] = await new Promise((res, rej) => { const pr = ctx.decodeAudioData(ab, res, rej); if (pr && pr.catch) pr.catch(rej); });
       } catch (e) { /* buzuq fayl — standart ovoz qoladi */ }
     }));
     if (amb && !amb.custom && buf.ambient) { ambient(false); ambient(true); }
   }
+  // Ilova fonga o'tsa, yopilsa yoki Telegram uni yashirsa — barcha ovozlar to'xtaydi
+  let pausedByHide = false;
+  function pauseAll(hide) {
+    if (!ctx) return;
+    if (hide && ctx.state === 'running') { pausedByHide = true; ctx.suspend().catch(() => {}); }
+    else if (!hide && pausedByHide) { pausedByHide = false; ctx.resume().catch(() => {}); }
+  }
+  document.addEventListener('visibilitychange', () => pauseAll(document.hidden));
+  window.addEventListener('pagehide', () => { fly(false); ambient(false); pauseAll(true); });
+  window.addEventListener('blur', () => { if (document.hidden) pauseAll(true); });
+  try { tg?.onEvent?.('deactivated', () => pauseAll(true)); tg?.onEvent?.('activated', () => pauseAll(false)); } catch (e) {}
   async function unlockAudio() {
     if (!ensure()) return false;
     if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
@@ -1673,7 +1821,7 @@ const sfx = (() => {
     renderSnd();
   }
   return { tick, dialTick, spin, drop, win, jackpot, lose, click, reveal, clunk, whoosh, ambient, fly, boom, cashout, loadCustom, unlockAudio, setOn,
-    get on() { return on; }, get running() { return !!ctx && ctx.state === 'running'; } };
+    get on() { return on; }, get running() { return !!ctx && ctx.state === 'running'; }, get flying() { return !!fl; } };
 })();
 
 const SND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
@@ -1693,7 +1841,7 @@ renderSnd();
 const Loader = (() => {
   const RING = 2 * Math.PI * 126;
   const STEPS = ['Seyf qulfi tekshirilmoqda', 'Serverga ulanmoqda', "Skinlar ro'yxati yuklanmoqda", 'Balans tekshirilmoqda', 'Seyf ochilmoqda'];
-  let shown = 0, target = 0, dial = 0, raf = 0, lastTick = 0, t0 = performance.now(), opened = false, done = false;
+  let shown = 0, target = 0, dial = 0, raf = 0, lastTick = 0, t0 = performance.now(), opened = false, done = false, msg = '';
   // Murvat va belgilarni chizish
   const bolts = [], ticks = [];
   for (let i = 0; i < 8; i++) {
@@ -1715,7 +1863,7 @@ const Loader = (() => {
     const pct = Math.min(100, shown);
     $('vRing').setAttribute('stroke-dasharray', `${pct / 100 * RING} ${RING}`);
     $('gPct').textContent = Math.floor(pct) + '%';
-    $('gTxt').textContent = STEPS[Math.min(STEPS.length - 1, Math.floor(pct / 100 * STEPS.length))];
+    $('gTxt').textContent = (!done && msg) || STEPS[Math.min(STEPS.length - 1, Math.floor(pct / 100 * STEPS.length))];
     // Qulf murvati: tebranib aylanadi, har 9° da "tiq"
     const nd = Math.sin(el * 1.3) * 140 + el * 40;
     if (Math.abs(nd - lastTick) >= 9) { sfx.dialTick(); lastTick = nd; }
@@ -1759,7 +1907,7 @@ const Loader = (() => {
     $('gTxt').textContent = 'Seyfni ochib bo\'lmadi'; $('gPct').textContent = '';
     $('gMsg').innerHTML = html;
   }
-  return { finish, fail, get opened() { return opened; } };
+  return { finish, fail, status: m => { msg = m; }, get opened() { return opened; } };
 })();
 
 /* ── O'yin rasmlari va oldindan yuklash ───────────── */
@@ -1786,13 +1934,123 @@ function preloadMedia() {
 }
 
 /* ── Ishga tushirish ──────────────────────────────── */
+/* ── Kuzatuv (admin AI tahlili uchun): qaysi bo'limda, qanday xato ── */
+const trackT = {};
+function track(kind, code, detail) {
+  if (!initData || !code) return;
+  const k = kind + ':' + code, now = Date.now();
+  if (trackT[k] && now - trackT[k] < (kind === 'screen' ? 1000 : 20000)) return;
+  trackT[k] = now;
+  try {
+    fetch(API + '/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+      body: JSON.stringify({ initData, kind, code: String(code).slice(0, 60), detail: String(detail || '').slice(0, 300) }) }).catch(() => {});
+  } catch (e) {}
+}
+let scrT = 0;
+function trackScreen(sc) { clearTimeout(scrT); scrT = setTimeout(() => track('screen', sc), 1200); }
+window.addEventListener('error', e => track('error', 'js', `${e.message || ''} @${e.lineno || 0}`));
+window.addEventListener('unhandledrejection', e => track('error', 'js', String(e.reason?.message || e.reason || '').slice(0, 200)));
+
+/* ── Yordam: AI support ──────────────────────────── */
+// Xato chiqqanda — chat o'zi ochilib ketmaydi (bezovta qiladi). Pastda kichik «Yordam kerakmi?» tugmasi chiqadi:
+// muhim xatolarda darhol, boshqalarida — 1 daqiqada 2 marta xato bo'lsa. 3 daqiqada ko'pi bilan bir marta.
+const HELP_CODES = new Set(['deposit_required', 'withdraw_disabled', 'no_steam_url', 'invalid_url', 'steam_not_found',
+  'invoice_failed', 'server_error', 'value_too_low', 'item_not_found', 'check_failed']);
+let errTimes = [], hintAt = 0, hintCode = '';
+function helpHint(code) {
+  if (!S.cfg?.supportAi || code === 'network' || code === 'invalid_init_data') return;
+  const now = Date.now(); errTimes = errTimes.filter(t => now - t < 60000); errTimes.push(now);
+  if (!HELP_CODES.has(code) && errTimes.length < 2) return;
+  if (now - hintAt < 180000 || ov.classList.contains('on')) return;
+  hintAt = now; hintCode = code;
+  const c = $('helpChip'); c.classList.add('on');
+  clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('on'), 7000);
+}
+$('helpChip').addEventListener('click', () => { const c = $('helpChip'); c.classList.remove('on'); haptic(); openSupport(hintCode); });
+
+function renderHelpCard() {
+  if (!S.cfg.supportAi) return;
+  $('helpBox').innerHTML = `<button class="help-card" id="helpOpen"><span class="hi">🤖</span><div><b>Yordam</b><span>Savol bering — AI darhol javob beradi</span></div><span class="ar">›</span></button>`;
+  $('helpOpen').addEventListener('click', () => { haptic(); openSupport(); });
+}
+
+const SP_SUG = ["Balansni qanday to'ldiraman?", "Skinni Steam'ga qanday chiqaraman?", 'Trade URL qayerdan olaman?', "Crash qanday o'ynaladi?"];
+const SP_ERR = {
+  daily_limit: "Bugungi savollar limiti tugadi. Ertaga yana yozing 🙏",
+  too_fast: 'Biroz sekinroq — oldingi javob tayyorlanyapti ⏳',
+  ai_busy: "Hozir javob bera olmayapman. Bir daqiqadan keyin qayta urinib ko'ring 🙏",
+  support_off: "Yordam xizmati hozir o'chiq.",
+  network: "Internet aloqasi yo'q. Ulanishni tekshirib, qayta yuboring.",
+};
+const SEND_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+let spBusy = false, spErr = '';
+function spBub(cls, text, html) {
+  const log = $('spLog'); if (!log) return null;
+  const b = document.createElement('div'); b.className = 'bub ' + cls;
+  if (html) b.innerHTML = html; else b.textContent = text;
+  log.appendChild(b);
+  requestAnimationFrame(() => sheet.scrollTo({ top: sheet.scrollHeight, behavior: 'smooth' }));
+  return b;
+}
+const spSize = ta => { ta.style.height = '46px'; ta.style.height = Math.min(104, ta.scrollHeight + 2) + 'px'; };
+const spLeft = n => { const e = $('spLeft'); if (e && n != null) e.textContent = n <= 5 ? `Bugun yana ${n} ta savol berishingiz mumkin` : ''; };
+async function openSupport(code) {
+  spErr = code || ''; spBusy = false;
+  openSheet(`<div class="sp-head"><div class="sp-av">🤖</div><div><b>CaseVault yordam</b><span><i class="on-dot"></i>AI · bir necha soniyada javob beradi</span></div></div>
+    <div class="sp-log" id="spLog"><div class="bub ai">Salom! 👋 Men CaseVault yordamchisiman. Balans, case'lar, o'yinlar yoki Steam'ga chiqarish haqida so'rang — hisobingizni ko'rib, aniq javob beraman.</div></div>
+    <div class="sp-sug" id="spSug">${SP_SUG.map(q => `<button>${esc(q)}</button>`).join('')}</div>
+    <form class="sp-in" id="spForm"><textarea id="spText" rows="1" maxlength="700" placeholder="Savolingizni yozing…" enterkeyhint="send"></textarea>
+      <button type="submit" id="spSend" aria-label="Yuborish">${SEND_SVG}</button></form>
+    <div class="sp-left" id="spLeft"></div>`, () => { spErr = ''; trackScreen(S.cur); });
+  track('screen', 'support'); $('toast').classList.remove('on');
+  const ta = $('spText');
+  if (code && ERR[code]) ta.value = `Menda «${errText(code)}» degan xabar chiqdi. Nima qilishim kerak?`;
+  spSize(ta);
+  ta.addEventListener('input', () => spSize(ta));
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); spSend(); } });
+  $('spForm').addEventListener('submit', e => { e.preventDefault(); spSend(); });
+  $('spSug').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { ta.value = b.textContent; spSend(); } });
+  const h = await api('/api/support/history', {});
+  if (!$('spLog') || h.error) return;
+  if (h.enabled === false) { spBub('ai', SP_ERR.support_off); $('spSend').disabled = true; return; }
+  if (h.messages?.length) {
+    $('spSug')?.remove();
+    const frag = document.createDocumentFragment();
+    h.messages.forEach(m => { const b = document.createElement('div'); b.className = 'bub ' + (m.role === 'user' ? 'me' : 'ai'); b.style.animation = 'none'; b.textContent = m.text; frag.appendChild(b); });
+    $('spLog').appendChild(frag);
+    sheet.scrollTop = sheet.scrollHeight;
+  }
+  spLeft(h.left);
+}
+async function spSend() {
+  const ta = $('spText'); if (!ta || spBusy) return;
+  const text = ta.value.trim(); if (!text) return;
+  spBusy = true; $('spSend').disabled = true; ta.value = ''; spSize(ta); $('spSug')?.remove(); haptic();
+  spBub('me', text);
+  const typing = spBub('ai typing', '', '<i></i><i></i><i></i>');
+  const r = await api('/api/support/ask', { text, errorCode: spErr }); spErr = '';
+  typing?.remove();
+  if (r.error) spBub('ai', SP_ERR[r.error] || SP_ERR.ai_busy);
+  else { spBub('ai', r.reply); spLeft(r.left); notify('success'); }
+  spBusy = false; if ($('spSend')) $('spSend').disabled = false;
+}
+
 async function boot() {
   if (!initData) {
     Loader.fail(`Bu ilova Telegram ichida ishlaydi.<br>Botdagi «O'yinni boshlash» tugmasini bosing.`);
     return;
   }
-  const d = await api('/api/bootstrap', {});
-  if (d.error) {
+  // Server uxlagan bo'lsa (bepul hosting) — xato ko'rsatmaymiz, uyg'onguncha seyf ekranida kutamiz
+  let d, t0 = Date.now();
+  for (;;) {
+    d = await api('/api/bootstrap', {});
+    if (!d.error && d.me) break;
+    if ((d.error && d.error !== 'network' && d.error !== 'server_error') || Date.now() - t0 > 120000) break;
+    Loader.status(Date.now() - t0 > 3000 ? "Server uyg'onmoqda — bir necha soniya" : 'Serverga ulanmoqda');
+    await sleep(2500);
+  }
+  if (d.error || !d.me) {
+    d.error = d.error || 'server_error';
     const m = ERR[d.error] ?? ERR.server_error;
     Loader.fail(`${esc(typeof m === 'function' ? m() : m)}<button class="btn" onclick="location.reload()">Qayta urinish</button>`);
     return;
@@ -1803,11 +2061,16 @@ async function boot() {
   $('crBet').value = $('dcBet').value = Math.max(S.cfg.minBet, 10);
   setBal(S.me.balance); setFree(S.me.freeSecondsLeft);
   S.media = new Set(d.media || []);
-  renderCases(); renderGameArt(); setupBetChips(); renderDice(); renderRef(); renderTasks();
+  renderCases(); renderGameArt(); setupBetChips(); renderDice(); renderRef(); renderTasks(); renderHelpCard();
   sfx.loadCustom(d.media || [], S.imgV);
   Loader.finish();
   preloadMedia();
+  // E'londagi «Case ochish» tugmasidan kelgan bo'lsa — darhol o'sha case
+  const deep = new URLSearchParams(location.search).get('case');
+  if (deep && S.caseById[deep]) setTimeout(() => openCase(deep), 900);
   loadFeed(); setInterval(() => { if (!document.hidden) loadFeed(); }, 12000);
+  // Inventarni oldindan tayyorlab qo'yamiz — birinchi ochilishda ham qotmaydi
+  setTimeout(() => idle(() => loadInv()), 1500);
 }
 boot();
 </script>
