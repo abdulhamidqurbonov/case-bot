@@ -52,6 +52,10 @@ WITHDRAW_ENABLED      = _int("WITHDRAW_ENABLED", 0)       # boshlang'ich holat; 
 # tashqi manzil orqali «uyg'otib» turadi (WEBAPP_URL/health). 0 = o'chirilgan.
 KEEP_ALIVE = _int("KEEP_ALIVE", 1)
 
+# ── Qaytarish eslatmalari: kirmay qo'ygan o'yinchiga «bepul case tayyor» xabari ──
+REMIND_ENABLED = _int("REMIND_ENABLED", 1)        # boshlang'ich holat; keyin bot: /remind_on, /remind_off
+REMIND_AFTER_H = _int("REMIND_AFTER_HOURS", 20)   # oxirgi kirishdan necha soat o'tgach birinchi eslatma
+
 # ── AI (Groq — groq.com, bepul tarifi bor, juda tez) ───────────────────
 # console.groq.com → API Keys. Kalit bo'lmasa AI funksiyalari shunchaki o'chiq turadi.
 AI_API_KEY   = (os.getenv("GROQ_API_KEY", "") or os.getenv("AI_API_KEY", "")).strip()

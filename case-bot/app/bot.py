@@ -41,6 +41,8 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     _, created = await asyncio.to_thread(
         dbm.get_or_create_user, user.id, user.username, user.first_name)
+    from app import engage
+    await asyncio.to_thread(engage.unblock, user.id)          # qaytib kelgan — eslatmalar yana ishlaydi
 
     # Referal faqat birinchi marta kirgan foydalanuvchi uchun hisoblanadi
     if created and ctx.args and ctx.args[0].startswith("ref_"):
@@ -357,7 +359,10 @@ async def cmd_admin_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "🤖 <b>AI yordamchi</b>\n"
         "/ai — AI bilan suhbat (statistika, o'yinchilar, g'oyalar)\n"
         "/ai savol — bitta savol · /ai_off · /ai_reset\n"
-        "/ai_daily — har kuni kechqurun hisobot",
+        "/ai_daily — har kuni kechqurun hisobot\n"
+        "/ai_auto — avtopilot (siz yo'qligingizda kuzatadi)\n\n"
+        "🎁 <b>Qaytarish eslatmalari</b>\n"
+        "/remind_stats · /remind_on · /remind_off · /remind_now",
         parse_mode="HTML")
 
 

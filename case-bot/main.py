@@ -103,7 +103,8 @@ async def lifespan(app: FastAPI):
     from app.config import KEEP_ALIVE
     ka = asyncio.get_running_loop().create_task(_keep_alive()) if KEEP_ALIVE else None
     from app import ai
-    daily = asyncio.get_running_loop().create_task(ai.daily_loop()) if ai.enabled() else None
+    from app import autopilot
+    bg = autopilot.start(ptb.bot)                     # eslatmalar + avtopilot (fon vazifalari)
     logger.info("AI: %s", "yoqilgan" if ai.enabled() else "o'chiq (GROQ_API_KEY yo'q)")
     logger.info("✅ Bot ishga tushdi: @%s", ptb.bot.username)
     from app.config import ADMIN_CHAT_ID
@@ -114,8 +115,8 @@ async def lifespan(app: FastAPI):
     finally:
         if ka:
             ka.cancel()
-        if daily:
-            daily.cancel()
+        for t in bg:
+            t.cancel()
         await ai.close()
         await live.stop()
         await ptb.stop()

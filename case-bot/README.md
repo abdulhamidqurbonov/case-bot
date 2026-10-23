@@ -119,3 +119,12 @@ Profil → «Yordam» va botga yozilgan oddiy xabarlar orqali ishlaydi; hal qila
   Create → Pages → GitHub repo'ni ulash → Build command bo'sh, Build output directory: `case-bot/public` → Deploy.
   So'ng Render'da `FRONTEND_URL` = olingan manzil (masalan `https://case-vault.pages.dev`). Bot tugmalari va menyu
   tugmasi o'sha sahifani ochadi; server uxlagan bo'lsa ham darhol CaseVault seyf ekrani chiqadi.
+
+## Avtopilot va qaytarish eslatmalari
+
+* `/ai` bir marta yozilsa yetadi — keyin oddiy yozaverasiz (server qayta ishga tushsa ham rejim saqlanadi).
+* AI ikkinchi admin kabi amal taklif qiladi: hammaga e'lon, o'yinchiga xabar, Stars sovg'a (≤1000 ⭐),
+  chiqarishni ochish/yopish. Har biri ostida «✅ Tasdiqlash / ❌ Bekor» — siz bosmaguncha hech narsa bajarilmaydi.
+* `/ai_auto` — avtopilot: 10:00 reja, har 3 soatda tekshiruv (faqat muhim bo'lsa yozadi), 21:00 hisobot.
+* Qaytarish eslatmalari: kirmay qo'ygan o'yinchiga «bepul case tayyor» xabari (20 soatdan keyin, so'ng +2/+4/+7 kun,
+  ko'pi bilan 4 marta, 10:00–21:00). `/remind_stats`, `/remind_on`, `/remind_off`, `/remind_now`.

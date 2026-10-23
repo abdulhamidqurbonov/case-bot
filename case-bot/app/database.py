@@ -305,6 +305,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_avatar TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id64 TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reminders_sent INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bot_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS no_remind BOOLEAN DEFAULT FALSE;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referrals_referred ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_openings_user   ON case_openings(telegram_id);
@@ -452,7 +456,7 @@ def get_or_create_user(telegram_id: int, username=None, first_name=None) -> tupl
 def get_me(telegram_id: int, username, first_name, cooldown_h: int) -> dict:
     with db() as cur:
         _ensure_user(cur, telegram_id, username, first_name)
-        cur.execute("UPDATE users SET last_seen_at = NOW() WHERE telegram_id = %s", (telegram_id,))
+        cur.execute("UPDATE users SET last_seen_at = NOW(), bot_blocked = FALSE WHERE telegram_id = %s", (telegram_id,))
         cur.execute(
             """
             SELECT u.*,

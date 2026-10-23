@@ -251,6 +251,9 @@ async def _broadcast(bot, admin_chat: int, kind: str, payload) -> None:
                 cap = c.get("title_html") or f"🆕 <b>{_esc(c['name'])}</b> — yangi case!"
                 await bot.send_photo(uid, c["post_file_id"], caption=cap, parse_mode="HTML",
                                      reply_markup=open_kb(c["id"]))
+            elif kind == "text":                          # AI tayyorlagan e'lon (HTML matn)
+                await bot.send_message(uid, payload, parse_mode="HTML", reply_markup=open_kb(None, "🎮 O'ynash"),
+                                       disable_web_page_preview=True)
             else:
                 src_chat, msg_id = payload
                 await bot.copy_message(uid, src_chat, msg_id, reply_markup=open_kb(None, "🎮 Ochish"))
